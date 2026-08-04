@@ -1,0 +1,18 @@
+{
+    "disableAutoExpandOnTrackChange": false,
+    "dynamicIslandLeftSwipeItems": ["cava", "battery"],
+    "dynamicIslandPrimaryAction": "toggleExpandedPlayer",
+    "dynamicIslandPrimaryButton": 1,
+    "dynamicIslandSecondaryAction": "toggleControlCenter",
+    "dynamicIslandSecondaryButton": 3,
+    "heroFontFamily": "Xanh Mono",
+    "iconFontFamily": "Symbols Nerd Font",
+    "overviewGlobalShortcutAppid": "quickshell",
+    "overviewGlobalShortcutName": "dynamic-island-overview",
+    "textFontFamily": "Xanh Mono",
+    "timeFontFamily": "Xanh Mono",
+    "tlpPermissionMode": "",
+    "tlpSudoPassword": "",
+    "wallpaperPath": "",
+    "workspaceOverviewWindowDragButton": 1
+}

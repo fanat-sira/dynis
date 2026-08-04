@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Dynis
+Comment=Dynamic Island for Hyprland
+Exec=dynis
+Icon=preferences-desktop-notification
+Terminal=false
+Type=Application
+Categories=Utility;
+Keywords=hyprland;quickshell;island;

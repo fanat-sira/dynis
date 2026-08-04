@@ -1,0 +1,13 @@
+[Unit]
+Description=Dynis Dynamic Island for Hyprland
+After=wayland-session.target
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=@CMAKE_INSTALL_FULL_BINDIR@/dynis
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=graphical-session.target

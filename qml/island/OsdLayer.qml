@@ -1,0 +1,166 @@
+import QtQuick
+import DynisBackend
+
+Item {
+    id: root
+
+    readonly property var userConfig: UserConfig
+
+    property string iconText: ""
+    property real progress: -1
+    property string customText: ""
+    property var configSource: null
+    readonly property var activeConfig: configSource || userConfig
+    property string iconFontFamily: activeConfig.iconFontFamily
+    property string textFontFamily: activeConfig.textFontFamily
+    property string heroFontFamily: activeConfig.heroFontFamily
+    property string slideDirection: "none"
+    property real transitionProgress: 0
+    readonly property bool showProgress: progress >= 0
+    readonly property bool showText: progress < 0 && customText !== ""
+    property bool showCondition: false
+    property real hiddenLeftPadding: 16
+    property real hiddenRightPadding: 16
+    readonly property real clampedProgress: slideDirection === "right"
+        ? Math.max(0, Math.min(1, transitionProgress))
+        : (slideDirection === "left"
+            ? Math.max(0, Math.min(1, -transitionProgress))
+            : 0)
+    readonly property real revealProgress: slideDirection === "none" ? 1 : (1 - clampedProgress)
+    readonly property real contentX: slideDirection === "right"
+        ? (width + hiddenRightPadding) * clampedProgress
+        : (slideDirection === "left"
+            ? -(width + hiddenLeftPadding) * clampedProgress
+            : 0)
+
+    anchors.fill: parent
+    clip: true
+    opacity: showCondition ? revealProgress : 0
+
+    Behavior on opacity {
+        enabled: slideDirection === "none"
+
+        NumberAnimation {
+            duration: showCondition ? 280 : 200
+            easing.type: Easing.InOutQuad
+        }
+    }
+
+    TextMetrics {
+        id: osdMaxPercentMetrics
+
+        font.family: heroFontFamily
+        font.pixelSize: 17
+        font.weight: Font.Medium
+        text: "100%"
+    }
+
+    readonly property real osdIconReserve: 18
+    readonly property real osdIconPercentGap: 4
+
+    Item {
+        x: contentX
+        width: parent.width
+        height: parent.height
+        visible: showProgress
+
+        Item {
+            id: osdProgressLeading
+
+            anchors.left: parent.left
+            anchors.leftMargin: 18
+            anchors.verticalCenter: parent.verticalCenter
+            width: root.osdIconReserve + root.osdIconPercentGap + osdMaxPercentMetrics.advanceWidth
+            height: parent.height
+
+            Text {
+                id: osdProgressIcon
+
+                text: iconText
+                color: StyleTokens.textPrimary
+                font.pixelSize: 16
+                font.family: iconFontFamily
+                anchors.left: parent.left
+                anchors.verticalCenter: parent.verticalCenter
+                width: root.osdIconReserve
+                horizontalAlignment: Text.AlignHCenter
+            }
+
+            Text {
+                text: Math.round(progress * 100) + "%"
+                color: StyleTokens.textPrimary
+                font.pixelSize: 17
+                font.family: heroFontFamily
+                font.weight: Font.Medium
+                font.letterSpacing: 0
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+                width: osdMaxPercentMetrics.advanceWidth
+                horizontalAlignment: Text.AlignRight
+            }
+        }
+
+        Rectangle {
+            id: osdProgressTrack
+
+            anchors.left: osdProgressLeading.right
+            anchors.leftMargin: 14
+            anchors.right: parent.right
+            anchors.rightMargin: 18
+            anchors.verticalCenter: parent.verticalCenter
+            height: 7
+            radius: height / 2
+            antialiasing: true
+            color: Qt.rgba(89 / 255, 96 / 255, 104 / 255, 0.22)
+
+            Rectangle {
+                id: osdProgressFill
+
+                anchors.left: parent.left
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
+                width: parent.width * Math.max(0, Math.min(1, progress))
+                radius: height / 2
+                antialiasing: true
+                color: StyleTokens.textPrimary
+
+                Behavior on width {
+                    NumberAnimation {
+                        duration: 180
+                        easing.type: Easing.OutCubic
+                    }
+                }
+            }
+        }
+    }
+
+    Item {
+        x: contentX
+        width: parent.width
+        height: parent.height
+        visible: showText
+
+        Row {
+            anchors.centerIn: parent
+            spacing: 14
+
+            Text {
+                text: iconText
+                color: StyleTokens.textPrimary
+                font.pixelSize: 16
+                font.family: iconFontFamily
+                anchors.verticalCenter: parent.verticalCenter
+            }
+
+            Text {
+                text: customText
+                color: StyleTokens.textPrimary
+                font.pixelSize: 17
+                font.family: textFontFamily
+                font.weight: Font.Medium
+                font.letterSpacing: 0
+                anchors.verticalCenter: parent.verticalCenter
+            }
+        }
+    }
+}

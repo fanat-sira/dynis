@@ -1,0 +1,16 @@
+#!/bin/bash
+# Launcher for Dynis Quickshell component.
+#
+# Resolves the QML directory relative to this launcher's own location so the
+# same script works regardless of the CMake install prefix (/usr, /usr/local,
+# or any custom prefix). Use the resolved path as the Quickshell -p target so
+# `qs ipc -p <same-path> ...` targets the same Quickshell instance.
+BIN_DIR="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
+QML_PATH="$(cd "$BIN_DIR/../share/dynis" 2>/dev/null && pwd)"
+
+if [[ -z "$QML_PATH" || ! -f "$QML_PATH/shell.qml" ]]; then
+    echo "dynis-launcher: could not locate shell.qml relative to $BIN_DIR" >&2
+    exit 1
+fi
+
+exec quickshell -p "$QML_PATH" "$@"

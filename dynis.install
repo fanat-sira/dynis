@@ -1,0 +1,17 @@
+post_install() {
+  echo ":: Dynis has been installed."
+  echo ":: To start the island and enable it on login, run:"
+  echo "   systemctl --user enable --now dynis"
+  echo ""
+  echo ":: Alternatively, add this to your hyprland.conf:"
+  echo "   exec-once = dynis"
+}
+
+post_upgrade() {
+  echo ":: Dynis has been updated."
+  echo ":: Restarting the service..."
+  systemctl --user daemon-reload
+  if systemctl --user is-active --quiet dynis; then
+    systemctl --user restart dynis
+  fi
+}
