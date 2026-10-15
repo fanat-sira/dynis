@@ -292,10 +292,9 @@ QProcess *SystemServices::startCommand(const QString &program,
     connect(process, &QProcess::started, process, [process, timeoutMs, timeout, stdinData]() {
         if (timeoutMs > 0)
             timeout->start(timeoutMs);
-        if (!stdinData.isEmpty()) {
+        if (!stdinData.isEmpty())
             process->write(stdinData);
-            process->closeWriteChannel();
-        }
+        process->closeWriteChannel();
     });
 
     connect(process, &QProcess::errorOccurred, process, [finish](QProcess::ProcessError error) {
@@ -799,7 +798,7 @@ void SystemServices::requestTlpState() {
         });
 }
 
-void SystemServices::setTlpMode(const QString &mode, const QString &sudoPassword) {
+void SystemServices::setTlpMode(const QString &mode) {
     static const QSet<QString> allowedModes = {
         QStringLiteral("power-saver"),
         QStringLiteral("balanced"),
@@ -825,7 +824,7 @@ void SystemServices::setTlpMode(const QString &mode, const QString &sudoPassword
 
     QString program;
     QStringList arguments;
-    QByteArray stdinData;
+    // Authorization is delegated to polkit; Dynis never handles a password.
 
 #ifdef Q_OS_UNIX
     if (::getuid() == 0) {
@@ -834,30 +833,16 @@ void SystemServices::setTlpMode(const QString &mode, const QString &sudoPassword
     } else
 #endif
     {
-        const QString password = sudoPassword.trimmed();
-        if (password.isEmpty() && !findExecutable(QStringLiteral("pkexec")).isEmpty()) {
-            program = QStringLiteral("pkexec");
-            arguments = {QStringLiteral("tlp"), normalizedMode};
-        } else if (password.isEmpty()) {
-            if (findExecutable(QStringLiteral("sudo")).isEmpty()) {
-                emit tlpSetFinished(false, 126, QString(), QStringLiteral("pkexec or sudo is not installed."));
-                return;
-            }
-            program = QStringLiteral("sudo");
-            arguments = {QStringLiteral("-n"), QStringLiteral("tlp"), normalizedMode};
-        } else {
-            if (findExecutable(QStringLiteral("sudo")).isEmpty()) {
-                emit tlpSetFinished(false, 126, QString(), QStringLiteral("sudo is not installed."));
-                return;
-            }
-            program = QStringLiteral("sudo");
-            arguments = {QStringLiteral("-S"), QStringLiteral("-p"), QString(), QStringLiteral("tlp"), normalizedMode};
-            stdinData = (password + QLatin1Char('\n')).toUtf8();
+        program = findExecutable(QStringLiteral("pkexec"));
+        if (program.isEmpty()) {
+            emit tlpSetFinished(false, 126, QString(), QStringLiteral("pkexec is not installed; install polkit and an authentication agent."));
+            return;
         }
+        arguments = {findExecutable(QStringLiteral("tlp")), normalizedMode};
     }
 
     const int commandGeneration = ++m_tlpCommandGeneration;
-    m_tlpSetter = startCommand(program, arguments, 10000,
+    m_tlpSetter = startCommand(program, arguments, 120000,
         [this, program, commandGeneration](const CommandResult &result) {
             if (commandGeneration != m_tlpCommandGeneration)
                 return;
@@ -868,8 +853,7 @@ void SystemServices::setTlpMode(const QString &mode, const QString &sudoPassword
             emit tlpSetFinished(errorText.isEmpty(), result.exitCode, output, errorText);
             if (errorText.isEmpty())
                 requestTlpState();
-        },
-        stdinData);
+        });
 }
 
 void SystemServices::cancelTlpApply() {

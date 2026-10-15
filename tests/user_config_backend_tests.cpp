@@ -2,6 +2,8 @@
 
 #include <QDir>
 #include <QFile>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QTemporaryDir>
 #include <QTest>
 
@@ -12,6 +14,8 @@ private slots:
     void loadsTypedValuesFromJson();
     void exposesParseErrorsAndFallsBackToDefaults();
     void mapsConfiguredMouseButtons();
+    void scrubsStoredPasswordAndKeepsOtherSettings();
+    void scrubsLegacyConfigToo();
 };
 
 namespace {
@@ -95,6 +99,44 @@ void UserConfigBackendTests::mapsConfiguredMouseButtons()
     QCOMPARE(config.mouseButton(8), 8);
     QCOMPARE(config.mouseButton(QVariant()), int(Qt::NoButton));
     QCOMPARE(config.mouseButtonsMask(QVariantList({1, 3})), int(Qt::LeftButton | Qt::RightButton));
+}
+
+void UserConfigBackendTests::scrubsStoredPasswordAndKeepsOtherSettings()
+{
+    QTemporaryDir home;
+    qputenv("XDG_CONFIG_HOME", home.path().toUtf8());
+    const QString path = writeConfig(home, R"({"tlpSudoPassword":"old secret","tlpPermissionMode":"password","custom":42})");
+    UserConfigBackend config;
+    QCOMPARE(config.tlpPermissionMode(), QStringLiteral("ask"));
+    QVERIFY(config.configError().isEmpty());
+    QFile file(path);
+    QVERIFY(file.open(QIODevice::ReadOnly));
+    const auto bytes = file.readAll();
+    QVERIFY(!bytes.contains("old secret"));
+    const auto object = QJsonDocument::fromJson(bytes).object();
+    QVERIFY(!object.contains("tlpSudoPassword"));
+    QCOMPARE(object.value("custom").toInt(), 42);
+    QVERIFY(!(file.permissions() & (QFileDevice::ReadOther | QFileDevice::ReadGroup)));
+    config.reload();
+    QVERIFY(config.configError().isEmpty());
+}
+
+void UserConfigBackendTests::scrubsLegacyConfigToo()
+{
+    QTemporaryDir home;
+    qputenv("XDG_CONFIG_HOME", home.path().toUtf8());
+    QDir().mkpath(home.path() + "/tide-island");
+    QFile file(home.path() + "/tide-island/userconfig.json");
+    QVERIFY(file.open(QIODevice::WriteOnly));
+    file.write(R"({"tlpSudoPassword":"old secret","tlpPermissionMode":"password"})");
+    file.close();
+    UserConfigBackend config;
+    QCOMPARE(config.tlpPermissionMode(), QStringLiteral("ask"));
+    QVERIFY(file.open(QIODevice::ReadOnly));
+    QVERIFY(!file.readAll().contains("old secret"));
+    QFile migrated(config.userConfigPath());
+    QVERIFY(migrated.open(QIODevice::ReadOnly));
+    QVERIFY(!migrated.readAll().contains("old secret"));
 }
 
 QTEST_MAIN(UserConfigBackendTests)

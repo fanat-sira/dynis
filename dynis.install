@@ -8,10 +8,8 @@ post_install() {
 }
 
 post_upgrade() {
-  echo ":: Dynis has been updated."
-  echo ":: Restarting the service..."
-  systemctl --user daemon-reload
-  if systemctl --user is-active --quiet dynis; then
-    systemctl --user restart dynis
-  fi
+  echo ":: Dynis has been updated. Restart it from your graphical session:"
+  echo "   systemctl --user daemon-reload"
+  echo "   systemctl --user restart dynis"
+  echo ":: If started with exec-once, restart Dynis manually or log in again."
 }

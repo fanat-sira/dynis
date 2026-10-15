@@ -6,6 +6,8 @@ PREFIX="/usr"
 SKIP_QUICKSHELL=0
 FORCE_BUILD_QUICKSHELL=0
 ENABLE_SERVICE=1
+# Quickshell v0.2.1; change deliberately after compatibility checks.
+QUICKSHELL_COMMIT="a1a150fab00a93ea983aaca5df55304bc837f51b"
 
 REQUIRED_PACKAGES=(
   git
@@ -23,6 +25,7 @@ REQUIRED_PACKAGES=(
   qt6-shadertools-dev
   libqt6svg6
   libqt6svg6-dev
+  libglib2.0-dev
   libudev-dev
   libdrm-dev
   libwayland-dev
@@ -210,15 +213,21 @@ build_quickshell() {
   quickshell_dir="$cache_base/quickshell"
   mkdir -p "$cache_base"
 
-  if [[ -d "$quickshell_dir/.git" ]]; then
-    log "Updating Quickshell source"
-    git -C "$quickshell_dir" pull --ff-only
-  elif [[ -e "$quickshell_dir" ]]; then
-    die "$quickshell_dir exists but is not a git checkout. Move it aside and rerun this script."
-  else
-    log "Cloning Quickshell source"
-    git clone --depth 1 https://git.outfoxxed.me/quickshell/quickshell.git "$quickshell_dir"
+  if [[ -e "$quickshell_dir" && ! -d "$quickshell_dir/.git" ]]; then
+    die "$quickshell_dir exists but is not a git checkout. Move it aside and rerun."
   fi
+  if [[ ! -d "$quickshell_dir/.git" ]]; then
+    mkdir -p "$quickshell_dir"
+    git -C "$quickshell_dir" init
+    git -C "$quickshell_dir" remote add origin https://git.outfoxxed.me/quickshell/quickshell.git
+  fi
+  if [[ -n "$(git -C "$quickshell_dir" status --porcelain --untracked-files=no)" ]]; then
+    die "Quickshell cache has local changes; move it aside instead of overwriting them."
+  fi
+  log "Fetching pinned Quickshell v0.2.1 ($QUICKSHELL_COMMIT)"
+  git -C "$quickshell_dir" fetch --depth 1 origin "$QUICKSHELL_COMMIT"
+  git -C "$quickshell_dir" checkout --detach "$QUICKSHELL_COMMIT"
+  [[ "$(git -C "$quickshell_dir" rev-parse HEAD)" == "$QUICKSHELL_COMMIT" ]] || die "Unexpected Quickshell revision"
 
   log "Configuring Quickshell"
   cmake -GNinja -S "$quickshell_dir" -B "$quickshell_dir/build" \

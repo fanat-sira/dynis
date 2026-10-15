@@ -3,7 +3,7 @@
     "dynamicIslandLeftSwipeItems": ["cava", "battery"],
     "dynamicIslandPrimaryAction": "toggleExpandedPlayer",
     "dynamicIslandPrimaryButton": 1,
-    "dynamicIslandSecondaryAction": "toggleControlCenter",
+    "dynamicIslandSecondaryAction": "toggleOverview",
     "dynamicIslandSecondaryButton": 3,
     "heroFontFamily": "Xanh Mono",
     "iconFontFamily": "Symbols Nerd Font",
@@ -16,8 +16,7 @@
     "screenEdgeShadowRadius": 24,
     "textFontFamily": "Xanh Mono",
     "timeFontFamily": "Xanh Mono",
-    "tlpPermissionMode": "",
-    "tlpSudoPassword": "",
+    "tlpPermissionMode": "ask",
     "wallpaperPath": "",
     "workspaceOverviewWindowDragButton": 1
 }

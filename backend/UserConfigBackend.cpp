@@ -1,4 +1,5 @@
 #include "UserConfigBackend.h"
+#include "ConfigMigration.h"
 
 #include <QDebug>
 #include <QDir>
@@ -88,10 +89,15 @@ UserConfigBackend::UserConfigBackend(QObject *parent)
 
 void UserConfigBackend::migrateLegacyConfigIfNeeded()
 {
+    const QString legacyPath = configHome() + QStringLiteral("/tide-island/userconfig.json");
+    QString migrationError;
+    if (!ConfigMigration::scrubFile(legacyPath, &migrationError)) {
+        qWarning().noquote() << migrationError;
+        return;
+    }
     if (QFileInfo::exists(m_userConfigPath))
         return;
 
-    const QString legacyPath = configHome() + QStringLiteral("/tide-island/userconfig.json");
     if (!QFileInfo::exists(legacyPath))
         return;
 
@@ -124,11 +130,6 @@ QString UserConfigBackend::defaultWallpaperPath() const
     return m_defaultWallpaperPath;
 }
 
-QString UserConfigBackend::defaultTlpSudoPassword() const
-{
-    return m_defaultTlpSudoPassword;
-}
-
 QString UserConfigBackend::wallpaperPath() const
 {
     return m_wallpaperPath;
@@ -152,11 +153,6 @@ QString UserConfigBackend::heroFontFamily() const
 QString UserConfigBackend::timeFontFamily() const
 {
     return m_timeFontFamily;
-}
-
-QString UserConfigBackend::tlpSudoPassword() const
-{
-    return m_tlpSudoPassword;
 }
 
 QString UserConfigBackend::tlpPermissionMode() const
@@ -244,16 +240,6 @@ void UserConfigBackend::setDefaultWallpaperPath(const QString &path)
     loadConfig();
 }
 
-void UserConfigBackend::setDefaultTlpSudoPassword(const QString &password)
-{
-    if (m_defaultTlpSudoPassword == password)
-        return;
-
-    m_defaultTlpSudoPassword = password;
-    emit defaultTlpSudoPasswordChanged();
-    loadConfig();
-}
-
 int UserConfigBackend::mouseButton(const QVariant &button) const
 {
     bool ok = false;
@@ -330,6 +316,12 @@ void UserConfigBackend::loadConfig()
         }
     }
 
+    configFile.close();
+    if (nextConfigError.isEmpty() && ConfigMigration::sanitize(configObject)) {
+        if (!ConfigMigration::save(m_userConfigPath, configObject, &nextConfigError))
+            qWarning().noquote() << nextConfigError;
+    }
+
     updateField(this, m_configError, nextConfigError, &UserConfigBackend::configErrorChanged);
 
     updateField(this, m_wallpaperPath, jsonString(configObject, QLatin1String("wallpaperPath"), m_defaultWallpaperPath), &UserConfigBackend::wallpaperPathChanged);
@@ -337,15 +329,14 @@ void UserConfigBackend::loadConfig()
     updateField(this, m_textFontFamily, jsonString(configObject, QLatin1String("textFontFamily"), QStringLiteral("Xanh Mono")), &UserConfigBackend::textFontFamilyChanged);
     updateField(this, m_heroFontFamily, jsonString(configObject, QLatin1String("heroFontFamily"), QStringLiteral("Xanh Mono")), &UserConfigBackend::heroFontFamilyChanged);
     updateField(this, m_timeFontFamily, jsonString(configObject, QLatin1String("timeFontFamily"), QStringLiteral("Xanh Mono")), &UserConfigBackend::timeFontFamilyChanged);
-    updateField(this, m_tlpSudoPassword, jsonString(configObject, QLatin1String("tlpSudoPassword"), m_defaultTlpSudoPassword), &UserConfigBackend::tlpSudoPasswordChanged);
-    updateField(this, m_tlpPermissionMode, jsonString(configObject, QLatin1String("tlpPermissionMode"), QStringLiteral("ask")), &UserConfigBackend::tlpPermissionModeChanged);
+    updateField(this, m_tlpPermissionMode, (configObject.value(QStringLiteral("tlpPermissionMode")) == QStringLiteral("skip") ? QStringLiteral("skip") : QStringLiteral("ask")), &UserConfigBackend::tlpPermissionModeChanged);
     updateField(this, m_overviewGlobalShortcutAppid, jsonString(configObject, QLatin1String("overviewGlobalShortcutAppid"), QStringLiteral("quickshell")), &UserConfigBackend::overviewGlobalShortcutAppidChanged);
     updateField(this, m_overviewGlobalShortcutName, jsonString(configObject, QLatin1String("overviewGlobalShortcutName"), QStringLiteral("dynamic-island-overview")), &UserConfigBackend::overviewGlobalShortcutNameChanged);
     updateField(this, m_workspaceOverviewWindowDragButton, jsonInt(configObject, QLatin1String("workspaceOverviewWindowDragButton"), 1), &UserConfigBackend::workspaceOverviewWindowDragButtonChanged);
     updateField(this, m_dynamicIslandPrimaryButton, jsonInt(configObject, QLatin1String("dynamicIslandPrimaryButton"), 1), &UserConfigBackend::dynamicIslandPrimaryButtonChanged);
     updateField(this, m_dynamicIslandPrimaryAction, jsonString(configObject, QLatin1String("dynamicIslandPrimaryAction"), QStringLiteral("toggleExpandedPlayer")), &UserConfigBackend::dynamicIslandPrimaryActionChanged);
     updateField(this, m_dynamicIslandSecondaryButton, jsonInt(configObject, QLatin1String("dynamicIslandSecondaryButton"), 3), &UserConfigBackend::dynamicIslandSecondaryButtonChanged);
-    updateField(this, m_dynamicIslandSecondaryAction, jsonString(configObject, QLatin1String("dynamicIslandSecondaryAction"), QStringLiteral("restoreRestingCapsule")), &UserConfigBackend::dynamicIslandSecondaryActionChanged);
+    updateField(this, m_dynamicIslandSecondaryAction, jsonString(configObject, QLatin1String("dynamicIslandSecondaryAction"), QStringLiteral("toggleOverview")), &UserConfigBackend::dynamicIslandSecondaryActionChanged);
     updateField(this, m_dynamicIslandLeftSwipeItems, jsonArray(configObject, QLatin1String("dynamicIslandLeftSwipeItems"), defaultDynamicIslandLeftSwipeItems()), &UserConfigBackend::dynamicIslandLeftSwipeItemsChanged);
     updateField(this, m_disableAutoExpandOnTrackChange, jsonBool(configObject, QLatin1String("disableAutoExpandOnTrackChange"), false), &UserConfigBackend::disableAutoExpandOnTrackChangeChanged);
     updateField(this, m_screenCornerRadius, jsonInt(configObject, QLatin1String("screenCornerRadius"), 15), &UserConfigBackend::screenCornerRadiusChanged);

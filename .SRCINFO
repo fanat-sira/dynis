@@ -1,12 +1,14 @@
 pkgbase = dynis
 	pkgdesc = A dynamic island for Hyprland using Quickshell
-	pkgver = 1.0.11
+	pkgver = 1.0.12
 	pkgrel = 1
 	url = https://github.com/fanat-sira/dynis
 	install = dynis.install
 	arch = x86_64
 	license = GPL-3.0-or-later
 	makedepends = cmake
+	makedepends = pkgconf
+	depends = glib2
 	depends = qt6-base
 	depends = qt6-declarative
 	depends = qt6-connectivity
@@ -25,7 +27,7 @@ pkgbase = dynis
 	optdepends = iwd: for wifi control
 	conflicts = dynis-git
 	options = !debug
-	source = dynis-1.0.11.tar.gz::https://github.com/fanat-sira/dynis/archive/refs/heads/main.tar.gz
-	sha256sums = SKIP
+	source = dynis-1.0.12.tar.gz
+	sha256sums = cec6cd493ce4fad737910f361202625392e34ee5d2598b4bdb10d12a5b0aa5b3
 
 pkgname = dynis

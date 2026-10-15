@@ -14,14 +14,12 @@ class UserConfigBackend final : public QObject {
     Q_PROPERTY(QString userConfigPath READ userConfigPath CONSTANT FINAL)
     Q_PROPERTY(QString configError READ configError NOTIFY configErrorChanged FINAL)
     Q_PROPERTY(QString defaultWallpaperPath READ defaultWallpaperPath WRITE setDefaultWallpaperPath NOTIFY defaultWallpaperPathChanged FINAL)
-    Q_PROPERTY(QString defaultTlpSudoPassword READ defaultTlpSudoPassword WRITE setDefaultTlpSudoPassword NOTIFY defaultTlpSudoPasswordChanged FINAL)
 
     Q_PROPERTY(QString wallpaperPath READ wallpaperPath NOTIFY wallpaperPathChanged FINAL)
     Q_PROPERTY(QString iconFontFamily READ iconFontFamily NOTIFY iconFontFamilyChanged FINAL)
     Q_PROPERTY(QString textFontFamily READ textFontFamily NOTIFY textFontFamilyChanged FINAL)
     Q_PROPERTY(QString heroFontFamily READ heroFontFamily NOTIFY heroFontFamilyChanged FINAL)
     Q_PROPERTY(QString timeFontFamily READ timeFontFamily NOTIFY timeFontFamilyChanged FINAL)
-    Q_PROPERTY(QString tlpSudoPassword READ tlpSudoPassword NOTIFY tlpSudoPasswordChanged FINAL)
     Q_PROPERTY(QString tlpPermissionMode READ tlpPermissionMode NOTIFY tlpPermissionModeChanged FINAL)
 
     Q_PROPERTY(QString overviewGlobalShortcutAppid READ overviewGlobalShortcutAppid NOTIFY overviewGlobalShortcutAppidChanged FINAL)
@@ -48,13 +46,11 @@ public:
     QString userConfigPath() const;
     QString configError() const;
     QString defaultWallpaperPath() const;
-    QString defaultTlpSudoPassword() const;
     QString wallpaperPath() const;
     QString iconFontFamily() const;
     QString textFontFamily() const;
     QString heroFontFamily() const;
     QString timeFontFamily() const;
-    QString tlpSudoPassword() const;
     QString tlpPermissionMode() const;
     QString overviewGlobalShortcutAppid() const;
     QString overviewGlobalShortcutName() const;
@@ -71,7 +67,6 @@ public:
     qreal screenEdgeShadowOpacity() const;
     QString screenEdgeShadowColor() const;
     void setDefaultWallpaperPath(const QString &path);
-    void setDefaultTlpSudoPassword(const QString &password);
 
     Q_INVOKABLE int mouseButton(const QVariant &button) const;
     Q_INVOKABLE int mouseButtonsMask(const QVariant &buttons) const;
@@ -80,13 +75,11 @@ public:
 signals:
     void configErrorChanged();
     void defaultWallpaperPathChanged();
-    void defaultTlpSudoPasswordChanged();
     void wallpaperPathChanged();
     void iconFontFamilyChanged();
     void textFontFamilyChanged();
     void heroFontFamilyChanged();
     void timeFontFamilyChanged();
-    void tlpSudoPasswordChanged();
     void tlpPermissionModeChanged();
     void overviewGlobalShortcutAppidChanged();
     void overviewGlobalShortcutNameChanged();
@@ -113,13 +106,11 @@ private:
     QString m_userConfigPath;
     QString m_configError;
     QString m_defaultWallpaperPath;
-    QString m_defaultTlpSudoPassword;
     QString m_wallpaperPath;
     QString m_iconFontFamily = QStringLiteral("Symbols Nerd Font");
     QString m_textFontFamily = QStringLiteral("Xanh Mono");
     QString m_heroFontFamily = QStringLiteral("Xanh Mono");
     QString m_timeFontFamily = QStringLiteral("Xanh Mono");
-    QString m_tlpSudoPassword;
     QString m_tlpPermissionMode = QStringLiteral("ask");
     QString m_overviewGlobalShortcutAppid = QStringLiteral("quickshell");
     QString m_overviewGlobalShortcutName = QStringLiteral("dynamic-island-overview");
@@ -127,7 +118,7 @@ private:
     int m_dynamicIslandPrimaryButton = 1;
     QString m_dynamicIslandPrimaryAction = QStringLiteral("toggleExpandedPlayer");
     int m_dynamicIslandSecondaryButton = 3;
-    QString m_dynamicIslandSecondaryAction = QStringLiteral("toggleControlCenter");
+    QString m_dynamicIslandSecondaryAction = QStringLiteral("toggleOverview");
     QVariantList m_dynamicIslandLeftSwipeItems;
     bool m_disableAutoExpandOnTrackChange = false;
     int m_screenCornerRadius = 15;

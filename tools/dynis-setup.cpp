@@ -1,4 +1,9 @@
+#include "../backend/ConfigMigration.h"
+
 #include <QCoreApplication>
+#include <QLockFile>
+#include <QUuid>
+#include <stdexcept>
 #include <QDateTime>
 #include <QDir>
 #include <QFile>
@@ -16,7 +21,6 @@
 #include <csignal>
 #include <cstdio>
 #include <cstdlib>
-#include <termios.h>
 #include <unistd.h>
 
 namespace {
@@ -24,7 +28,6 @@ constexpr auto configDirName = "dynis";
 constexpr auto configFileName = "userconfig.json";
 constexpr auto setupLockFileName = "setup-wizard.lock";
 constexpr auto wallpaperPathKey = "wallpaperPath";
-constexpr auto tlpSudoPasswordKey = "tlpSudoPassword";
 constexpr auto tlpPermissionModeKey = "tlpPermissionMode";
 constexpr auto hyprlandBindKey = "hyprlandBind";
 constexpr auto hyprlandBindModeKey = "hyprlandBindMode";
@@ -123,7 +126,6 @@ QJsonObject defaultUserConfig()
         {QStringLiteral("textFontFamily"), QStringLiteral("Xanh Mono")},
         {QStringLiteral("heroFontFamily"), QStringLiteral("Xanh Mono")},
         {QStringLiteral("timeFontFamily"), QStringLiteral("Xanh Mono")},
-        {QString::fromLatin1(tlpSudoPasswordKey), QString()},
         {QString::fromLatin1(tlpPermissionModeKey), QString()},
         {QStringLiteral("overviewGlobalShortcutAppid"), QStringLiteral("quickshell")},
         {QStringLiteral("overviewGlobalShortcutName"), QStringLiteral("dynamic-island-overview")},
@@ -131,7 +133,7 @@ QJsonObject defaultUserConfig()
         {QStringLiteral("dynamicIslandPrimaryButton"), 1},
         {QStringLiteral("dynamicIslandPrimaryAction"), QStringLiteral("toggleExpandedPlayer")},
         {QStringLiteral("dynamicIslandSecondaryButton"), 3},
-        {QStringLiteral("dynamicIslandSecondaryAction"), QStringLiteral("toggleControlCenter")},
+        {QStringLiteral("dynamicIslandSecondaryAction"), QStringLiteral("toggleOverview")},
         {QStringLiteral("dynamicIslandLeftSwipeItems"), stringArray({QStringLiteral("cava"), QStringLiteral("battery")})},
         {QStringLiteral("disableAutoExpandOnTrackChange"), false},
     };
@@ -154,7 +156,7 @@ QJsonObject loadUserConfig()
     if (!file.exists())
         return {};
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
-        return {};
+        throw std::runtime_error("Could not read user configuration.");
 
     const QByteArray bytes = file.readAll();
     if (bytes.trimmed().isEmpty())
@@ -163,7 +165,7 @@ QJsonObject loadUserConfig()
     QJsonParseError error;
     const QJsonDocument document = QJsonDocument::fromJson(bytes, &error);
     if (error.error != QJsonParseError::NoError || !document.isObject())
-        return {};
+        throw std::runtime_error("Invalid user configuration JSON; file left unchanged.");
 
     return document.object();
 }
@@ -172,17 +174,13 @@ bool saveUserConfig(const QJsonObject &data)
 {
     const QString path = userConfigPath();
     if (!ensurePrivateConfigDir(path))
-        return false;
+        throw std::runtime_error("Could not create private configuration directory.");
 
-    QSaveFile file(path);
-    if (!file.open(QIODevice::WriteOnly | QIODevice::Text))
-        return false;
-
-    file.write(QJsonDocument(data).toJson(QJsonDocument::Indented));
-    if (!file.commit())
-        return false;
-
-    QFile::setPermissions(path, QFileDevice::ReadOwner | QFileDevice::WriteOwner);
+    QJsonObject clean = data;
+    ConfigMigration::sanitize(clean);
+    QString error;
+    if (!ConfigMigration::save(path, clean, &error))
+        throw std::runtime_error(error.toStdString());
     return true;
 }
 
@@ -234,6 +232,7 @@ void mergeUserConfigDefaults(QJsonObject *data)
         data->insert(key, fallback);
     }
 
+    ConfigMigration::sanitize(*data);
     data->remove(QStringLiteral("controlCenterIcons"));
     data->remove(QStringLiteral("statusIcons"));
     data->remove(QStringLiteral("workspaceOverviewWindowRadius"));
@@ -403,29 +402,24 @@ QString displayPath(const QString &path)
 bool validTlpPermissionMode(const QString &mode)
 {
     return mode == QStringLiteral("skip")
-        || mode == QStringLiteral("ask")
-        || mode == QStringLiteral("password");
+        || mode == QStringLiteral("ask");
 }
 
 QStringList missingItems(QJsonObject *normalizedConfig = nullptr)
 {
+    QString migrationError;
+    if (!ConfigMigration::scrubFile(configHome() + QStringLiteral("/tide-island/userconfig.json"), &migrationError))
+        throw std::runtime_error(migrationError.toStdString());
     QJsonObject data = loadUserConfig();
     QStringList missing;
     mergeUserConfigDefaults(&data);
 
     QString tlpPermissionMode = configString(data, tlpPermissionModeKey);
-    const QString tlpPassword = configString(data, tlpSudoPasswordKey);
-    if (tlpPermissionMode.isEmpty() && !tlpPassword.isEmpty()) {
-        tlpPermissionMode = QStringLiteral("password");
-        data.insert(tlpPermissionModeKey, tlpPermissionMode);
-    }
 
     if (!readableFilePath(configString(data, wallpaperPathKey)))
         missing.append(wallpaperPathKey);
-    if (!validTlpPermissionMode(tlpPermissionMode)
-        || (tlpPermissionMode == QStringLiteral("password") && tlpPassword.isEmpty())) {
-        missing.append(tlpSudoPasswordKey);
-    }
+    if (!validTlpPermissionMode(tlpPermissionMode))
+        missing.append(tlpPermissionModeKey);
     if (!overviewBindPresent() && configString(data, hyprlandBindModeKey) != QStringLiteral("manual"))
         missing.append(hyprlandBindKey);
 
@@ -440,7 +434,7 @@ QList<SetupStep> setupSteps(const QStringList &missing)
     const QList<SetupStep> ordered = {
         {QString::fromLatin1(wallpaperPathKey), QStringLiteral("Wallpaper image")},
         {QString::fromLatin1(hyprlandBindKey), QStringLiteral("SUPER+TAB Hyprland binding")},
-        {QString::fromLatin1(tlpSudoPasswordKey), QStringLiteral("TLP mode switching password  optional")},
+        {QString::fromLatin1(tlpPermissionModeKey), QStringLiteral("TLP authorization (optional)")},
     };
 
     QList<SetupStep> result;
@@ -560,30 +554,6 @@ QString readLine(const QString &prompt)
     return QString::fromLocal8Bit(buffer).trimmed();
 }
 
-QString readHiddenLine(const QString &prompt)
-{
-    QTextStream out(stdout);
-    out << prompt;
-    out.flush();
-
-    termios oldTermios;
-    if (tcgetattr(STDIN_FILENO, &oldTermios) != 0)
-        return readLine(QString());
-
-    termios newTermios = oldTermios;
-    newTermios.c_lflag &= ~ECHO;
-    tcsetattr(STDIN_FILENO, TCSAFLUSH, &newTermios);
-
-    QTextStream in(stdin);
-    char buffer[4096];
-    const QString value = std::fgets(buffer, sizeof(buffer), stdin)
-        ? QString::fromLocal8Bit(buffer).trimmed()
-        : QString();
-    tcsetattr(STDIN_FILENO, TCSAFLUSH, &oldTermios);
-    out << '\n';
-    return value;
-}
-
 void printStepHeader(QTextStream &out, int step, int total, const QString &title)
 {
     out << "\nStep " << step << "/" << total << ": " << title << "\n\n";
@@ -642,59 +612,23 @@ void promptTlpPermissions(QJsonObject *data, int step, int total)
 {
     QTextStream out(stdout);
     printStepHeader(out, step, total, QStringLiteral("TLP permissions"));
-    out << "Dynis can switch TLP modes from the control center.\n\n";
-    out << "We promise we won't use your password to do anything unrelated to this.\n\n";
-    out << "Choose how you want to handle permissions:\n\n";
-    out << "  1. Skip this feature for now\n";
-    out << "  2. Ask for password when needed\n";
-    out << "  3. Input password\n\n";
+    out << "TLP authorization is handled by polkit and your session authentication agent.\n";
+    out << "Dynis does not collect or store administrative passwords.\n\n";
+    out << "  1. Disable TLP mode switching\n";
+    out << "  2. Authorize operations through polkit\n\n";
     out.flush();
-
     while (true) {
-        const QString choice = readLine(QStringLiteral("Enter 1, 2, or 3: ")).trimmed();
+        const QString choice = readLine(QStringLiteral("Enter 1 or 2: "));
         if (choice.isEmpty() && std::feof(stdin))
             return;
-
-        if (choice == QStringLiteral("1")) {
-            data->insert(tlpPermissionModeKey, QStringLiteral("skip"));
-            data->insert(tlpSudoPasswordKey, QString());
-            saveUserConfig(*data);
-            out << "Skipped TLP mode switching for now.\n";
-            return;
-        }
-
-        if (choice == QStringLiteral("2")) {
-            data->insert(tlpPermissionModeKey, QStringLiteral("ask"));
-            data->insert(tlpSudoPasswordKey, QString());
-            saveUserConfig(*data);
-            out << "Dynis will ask for permission when needed.\n";
-            return;
-        }
-
-        if (choice != QStringLiteral("3")) {
-            out << "Choose 1, 2, or 3.\n";
+        if (choice != QStringLiteral("1") && choice != QStringLiteral("2")) {
+            out << "Choose 1 or 2.\n";
             continue;
         }
-
-        const QString first = readHiddenLine(QStringLiteral("Enter your sudo password: "));
-        if (first.isEmpty() && std::feof(stdin))
-            return;
-
-        if (first.isEmpty()) {
-            out << "The password cannot be empty, or this setup will run again next time.\n";
-            continue;
-        }
-
-        const QString second = readHiddenLine(QStringLiteral("Enter it again to confirm: "));
-        if (first == second) {
-            data->insert(tlpPermissionModeKey, QStringLiteral("password"));
-            data->insert(tlpSudoPasswordKey, first);
-            saveUserConfig(*data);
-            out << "Saved TLP sudo password.\n";
-            return;
-        }
-
-        out << "The two entries did not match. Please try again.\n";
+        data->insert(tlpPermissionModeKey, choice == QStringLiteral("1")
+            ? QStringLiteral("skip") : QStringLiteral("ask"));
+        saveUserConfig(*data);
+        return;
     }
 }
 
@@ -703,30 +637,63 @@ bool appendHyprlandBind(QString *errorMessage)
     if (overviewBindPresent())
         return false;
 
-    const QString path = hyprlandConfigPath();
-    QDir().mkpath(QFileInfo(path).absolutePath());
-
-    QString existing;
-    QFile input(path);
-    if (input.exists()) {
-        if (!input.open(QIODevice::ReadOnly | QIODevice::Text)) {
-            if (errorMessage)
-                *errorMessage = input.errorString();
+    QString path = hyprlandConfigPath();
+    // Preserve a user's symlink (e.g. a dotfiles checkout) by replacing its target.
+    if (QFileInfo(path).isSymLink()) {
+        path = QFileInfo(path).canonicalFilePath();
+        if (path.isEmpty()) {
+            if (errorMessage) *errorMessage = QStringLiteral("Broken Hyprland config symlink.");
             return false;
         }
-        existing = QString::fromUtf8(input.readAll());
     }
-
-    QFile output(path);
-    if (!output.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate)) {
-        if (errorMessage)
-            *errorMessage = output.errorString();
+    auto fail = [errorMessage](const QString &message) {
+        if (errorMessage) *errorMessage = message;
         return false;
+    };
+    if (!QDir().mkpath(QFileInfo(path).absolutePath()))
+        return fail(QStringLiteral("Could not create Hyprland configuration directory."));
+    QLockFile lock(path + QStringLiteral(".dynis.lock"));
+    if (!lock.tryLock(0))
+        return fail(QStringLiteral("Another setup process is editing this configuration."));
+    if (overviewBindPresent())
+        return false;
+
+    QByteArray existing;
+    QFile input(path);
+    const bool existed = input.exists();
+    QFileDevice::Permissions permissions = QFileDevice::ReadOwner | QFileDevice::WriteOwner;
+    if (existed) {
+        if (!input.open(QIODevice::ReadOnly))
+            return fail(input.errorString());
+        existing = input.readAll();
+        if (input.error() != QFileDevice::NoError)
+            return fail(input.errorString());
+        permissions = input.permissions();
+        input.close();
+        const QString backupPath = path + QStringLiteral(".dynis-backup-")
+            + QUuid::createUuid().toString(QUuid::WithoutBraces);
+        QSaveFile backup(backupPath);
+        if (!backup.open(QIODevice::WriteOnly) || !backup.setPermissions(permissions)
+            || backup.write(existing) != existing.size() || !backup.commit())
+            return fail(QStringLiteral("Could not create backup: %1").arg(backup.errorString()));
     }
 
-    const QString separator = existing.isEmpty() || existing.endsWith(u'\n') ? QString() : QStringLiteral("\n");
-    const QString addition = QStringLiteral("\n# Dynis workspace overview\n") + QString::fromLatin1(overviewBindLine) + QStringLiteral("\n");
-    output.write((existing + separator + addition).toUtf8());
+    const QByteArray separator = existing.isEmpty() || existing.endsWith('\n') ? QByteArray() : QByteArray("\n");
+    const QByteArray updated = existing + separator + "\n# Dynis workspace overview\n" + overviewBindLine + "\n";
+    QSaveFile output(path);
+    if (!output.open(QIODevice::WriteOnly) || !output.setPermissions(permissions)
+        || output.write(updated) != updated.size())
+        return fail(output.errorString());
+    // Refuse to overwrite edits made by an editor while the backup was written.
+    QFile current(path);
+    if (existed) {
+        if (!current.open(QIODevice::ReadOnly) || current.readAll() != existing)
+            return fail(QStringLiteral("Configuration changed during setup; retry."));
+    } else if (current.exists()) {
+        return fail(QStringLiteral("Configuration was created during setup; retry."));
+    }
+    if (!output.commit())
+        return fail(output.errorString());
     return true;
 }
 
@@ -907,7 +874,7 @@ int runWizard()
 
         if (step.key == QString::fromLatin1(wallpaperPathKey)) {
             promptWallpaper(&data, stepNumber, stepTotal);
-        } else if (step.key == QString::fromLatin1(tlpSudoPasswordKey)) {
+        } else if (step.key == QString::fromLatin1(tlpPermissionModeKey)) {
             promptTlpPermissions(&data, stepNumber, stepTotal);
         } else if (step.key == QString::fromLatin1(hyprlandBindKey)) {
             configureHyprlandBind(&data, stepNumber, stepTotal);
@@ -937,7 +904,7 @@ void printUsage()
 }
 }
 
-int main(int argc, char **argv)
+int run(int argc, char **argv)
 {
     QCoreApplication app(argc, argv);
     const QStringList args = app.arguments().mid(1);
@@ -967,4 +934,14 @@ int main(int argc, char **argv)
 
     printUsage();
     return 2;
+}
+
+int main(int argc, char **argv)
+{
+    try {
+        return run(argc, argv);
+    } catch (const std::exception &error) {
+        QTextStream(stderr) << "Dynis setup: " << error.what() << '\n';
+        return 1;
+    }
 }

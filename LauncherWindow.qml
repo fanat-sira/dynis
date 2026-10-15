@@ -14,11 +14,8 @@ PanelWindow {
     // Shell selects one instance when the shortcut is pressed. Once selected,
     // this is the only authority for the surface's keyboard focus.
     property bool launcherActive: false
-    property string pendingLaunchId: ""
     property string query: ""
     property int selectedIndex: 0
-    property var usageHistory: ({})
-    property bool usageHistoryLoaded: false
     readonly property int itemHeight: 52
     readonly property int itemGap: 7
     readonly property int visibleItems: 5
@@ -96,7 +93,11 @@ PanelWindow {
         launcherActive = true;
         query = "";
         selectedIndex = 0;
-        appScan.exec(appScan.command);
+        entries.clear();
+        const apps = LauncherBackend.applications();
+        for (let index = 0; index < apps.length; index++)
+            entries.append(apps[index]);
+        rebuildFiltered();
     }
 
     function openClipboard() {
@@ -115,19 +116,13 @@ PanelWindow {
         query = "";
     }
 
-    function rebuildFrom(text, clipboard) {
-        const source = clipboard ? clipboardEntries : entries;
-        source.clear();
+    function rebuildClipboard(text) {
+        clipboardEntries.clear();
         const lines = String(text || "").split("\n");
         for (let i = 0; i < lines.length; i++) {
             const fields = lines[i].split("\t");
-            if (clipboard) {
-                if (fields.length < 2) continue;
-                source.append({ id: fields[0], name: fields.slice(1).join("\t"), icon: "edit-paste", exec: "" });
-            } else {
-                if (fields.length < 4) continue;
-                source.append({ id: fields[0], name: fields[1], icon: fields[2] || "application-x-executable", exec: fields.slice(3).join("\t") });
-            }
+            if (fields.length < 2) continue;
+            clipboardEntries.append({ id: fields[0], name: fields.slice(1).join("\t"), icon: "edit-paste" });
         }
         selectedIndex = 0;
         rebuildFiltered();
@@ -161,62 +156,6 @@ PanelWindow {
         return 1000 - gapPenalty;
     }
 
-    function usageScore(entryId) {
-        const timestamps = usageHistory[entryId] || [];
-        const now = Date.now();
-        const maximumAge = 7 * 24 * 60 * 60 * 1000;
-        let score = 0;
-        for (let index = 0; index < timestamps.length; index++) {
-            const age = now - Number(timestamps[index]);
-            if (age >= 0 && age <= maximumAge)
-                score += Math.exp(-(age / (24 * 60 * 60 * 1000)) / 3);
-        }
-        return score;
-    }
-
-    function recordLaunch(entryId) {
-        const now = Date.now();
-        const maximumAge = 7 * 24 * 60 * 60 * 1000;
-        const updated = {};
-        for (const id in usageHistory) {
-            const timestamps = (usageHistory[id] || []).filter((timestamp) => {
-                const age = now - Number(timestamp);
-                return age >= 0 && age <= maximumAge;
-            });
-            if (timestamps.length > 0)
-                updated[id] = timestamps;
-        }
-        const timestamps = (updated[entryId] || []).slice();
-        timestamps.push(now);
-        updated[entryId] = timestamps;
-        usageHistory = updated;
-        usageSaveTimer.restart();
-    }
-
-    function shellQuote(value) {
-        return "'" + String(value).replace(/'/g, "'\\''") + "'";
-    }
-
-    function executableCommand(desktopExec) {
-        let command = String(desktopExec || "").replace(/(?:\s|^)%[fFuUdDnNickvm]/g, "").replace(/%%/g, "%").trim();
-        // Some desktop entries use `-- %U`; without a URI, the separator has
-        // no meaning and can alter an application's command-line behaviour.
-        command = command.replace(/\s+--\s*$/, "");
-        return command;
-    }
-
-    function loadUsageHistory() {
-        try {
-            const parsed = JSON.parse(usageFile.text());
-            usageHistory = parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : ({});
-        } catch (error) {
-            usageHistory = ({});
-        }
-        usageHistoryLoaded = true;
-        if (entries.count > 0)
-            rebuildFiltered();
-    }
-
     function rebuildFiltered() {
         filteredEntries.clear();
         const matches = [];
@@ -225,7 +164,7 @@ PanelWindow {
             const entry = source.get(i);
             const score = matchScore(entry);
             if (score >= 0)
-                matches.push({ id: entry.id, name: entry.name, icon: entry.icon, exec: entry.exec, sourceIndex: i, matchScore: score, usageScore: usageScore(entry.id) });
+                matches.push({ id: entry.id, name: entry.name, icon: entry.icon, sourceIndex: i, matchScore: score, usageScore: clipboardOpen ? 0 : LauncherBackend.usageScore(entry.id) });
         }
         const hasQuery = query.trim() !== "";
         matches.sort((left, right) => {
@@ -244,7 +183,7 @@ PanelWindow {
         });
         for (let i = 0; i < matches.length; i++) {
             const entry = matches[i];
-            filteredEntries.append({ id: entry.id, name: entry.name, icon: entry.icon, exec: entry.exec });
+            filteredEntries.append({ id: entry.id, name: entry.name, icon: entry.icon });
         }
         selectedIndex = 0;
         list.positionViewAtBeginning();
@@ -294,20 +233,10 @@ PanelWindow {
     function activateSelected() {
         const entry = entryAtFilteredIndex(selectedIndex);
         if (!entry) return;
-        if (clipboardOpen) {
-            clipboardApply.command = ["bash", "-lc", "cliphist decode " + entry.id + " | wl-copy"];
-            clipboardApply.running = true;
-        } else {
-            const command = executableCommand(entry.exec);
-            if (command === "") return;
-            pendingLaunchId = entry.id;
-            console.debug("[Launcher] launching " + entry.id + ": " + command);
-            // Hyprland 0.56's Lua dispatcher no longer accepts the legacy
-            // `hyprctl dispatch exec <command>` syntax. Launch the desktop
-            // entry directly in Dynis' Wayland session and detach it so the
-            // launcher process can exit immediately.
-            appLaunch.exec(["bash", "-lc", "setsid " + command + " >/dev/null 2>&1 < /dev/null &"]);
-        }
+        if (clipboardOpen)
+            LauncherBackend.copyClipboard(entry.id);
+        else if (!LauncherBackend.launch(entry.id))
+            return;
         close();
     }
 
@@ -323,49 +252,14 @@ PanelWindow {
 
 
     Process {
-        id: appScan
-        running: true
-        command: ["bash", "-lc", "find /usr/share/applications $HOME/.local/share/applications -type f -name '*.desktop' 2>/dev/null | sort -u | while IFS= read -r f; do grep -qx 'NoDisplay=true' \"$f\" && continue; n=$(sed -n 's/^Name=//p' \"$f\" | head -n1); i=$(sed -n 's/^Icon=//p' \"$f\" | head -n1); e=$(sed -n 's/^Exec=//p' \"$f\" | head -n1); [ -n \"$n\" ] && [ -n \"$e\" ] && printf '%s\\t%s\\t%s\\t%s\\n' \"$(basename \"$f\" .desktop)\" \"$n\" \"$i\" \"$e\"; done"]
-        stdout: StdioCollector { onStreamFinished: root.rebuildFrom(this.text, false) }
-    }
-
-    Process {
         id: clipboardScan
         command: ["cliphist", "list"]
-        stdout: StdioCollector { onStreamFinished: root.rebuildFrom(this.text, true) }
+        stdout: StdioCollector { onStreamFinished: root.rebuildClipboard(this.text) }
     }
 
-    Process {
-        id: appLaunch
-        stderr: StdioCollector {
-            onStreamFinished: {
-                if (this.text.trim() !== "")
-                    console.warn("[Launcher] app launch: " + this.text.trim());
-            }
-        }
-        onStarted: console.debug("[Launcher] app launch started: " + root.pendingLaunchId)
-        onExited: function(exitCode) {
-            console.debug("[Launcher] app launch exited=" + exitCode + " id=" + root.pendingLaunchId);
-            if (exitCode === 0 && root.pendingLaunchId !== "")
-                root.recordLaunch(root.pendingLaunchId);
-            root.pendingLaunchId = "";
-        }
-    }
-    Process { id: clipboardApply }
-
-    FileView {
-        id: usageFile
-        path: Qt.resolvedUrl("launcher-usage.json")
-        printErrors: false
-        onLoaded: root.loadUsageHistory()
-        onLoadFailed: root.usageHistoryLoaded = true
-    }
-
-    Timer {
-        id: usageSaveTimer
-        interval: 250
-        repeat: false
-        onTriggered: usageFile.setText(JSON.stringify(root.usageHistory, null, 2) + "\n")
+    Connections {
+        target: LauncherBackend
+        function onErrorOccurred(message) { console.warn("[Launcher] " + message); }
     }
 
     onLauncherActiveChanged: {
