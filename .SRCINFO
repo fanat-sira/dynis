@@ -5,7 +5,7 @@ pkgbase = dynis
 	url = https://github.com/fanat-sira/dynis
 	install = dynis.install
 	arch = x86_64
-	license = GPL-3.0-or-later
+	license = MIT
 	makedepends = cmake
 	makedepends = pkgconf
 	depends = glib2
@@ -28,6 +28,6 @@ pkgbase = dynis
 	conflicts = dynis-git
 	options = !debug
 	source = dynis-1.0.12.tar.gz
-	sha256sums = cec6cd493ce4fad737910f361202625392e34ee5d2598b4bdb10d12a5b0aa5b3
+	sha256sums = 5c8071e249b1d30edd58b45ecd7762a2962d51662c6bf056440e5a24a56c9ba6
 
 pkgname = dynis

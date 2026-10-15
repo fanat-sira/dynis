@@ -2,7 +2,7 @@
 
 A Dynamic Island for **Hyprland**, built with **Quickshell**, QML, and Qt 6. A compact clock that expands into media controls, notifications, workspace previews, and system status.
 
-Based on [Tide Island](https://github.com/enhaoswen/Tide-island), with a searchable app launcher, clipboard picker, per-monitor workspace strip, CPU/RAM graphs, and separate glass surfaces for the island and launcher.
+Includes a searchable app launcher, clipboard picker, per-monitor workspace strip, CPU/RAM graphs, and separate glass surfaces for the island and launcher.
 
 ![Dynis application launcher](docs/images/launcher.jpg)
 
@@ -96,6 +96,6 @@ git diff --check
 
 Restart Quickshell after backend changes. CI builds the project, runs the Qt tests, and checks installation files. See [development and packaging](docs/development.md) for release preparation and test coverage.
 
-## License and credits
+## License
 
-[GNU GPL v3.0](LICENSE). Based on [enhaoswen/Tide-island](https://github.com/enhaoswen/Tide-island); the liquid-shape shader components credit [bea4dev/LiquidIslandQS](https://github.com/bea4dev/LiquidIslandQS). Bundled fonts retain their [own licenses](fonts/).
+[MIT](LICENSE). See [third-party notices](THIRD_PARTY_NOTICES.md) for source attribution. Bundled fonts retain their [own licenses](fonts/).

@@ -23,7 +23,7 @@ if args.commit and not re.fullmatch(r'[0-9a-f]{40}', args.commit):
     parser.error('--commit must be a full 40-character lowercase commit ID')
 prefix = f'dynis-{args.commit or version}'
 files = [
-    'CMakeLists.txt', 'LICENSE', 'shell.qml', 'DynamicIslandWindow.qml',
+    'CMakeLists.txt', 'LICENSE', 'THIRD_PARTY_NOTICES.md', 'shell.qml', 'DynamicIslandWindow.qml',
     'LauncherWindow.qml', 'WorkspaceIslandWindow.qml', 'IslandGlassCarrier.qml',
     'RoundedScreenCornersWindow.qml', 'dynis-launcher', 'dynis.desktop',
     'dynis.service.in', 'dynis.install', 'run-local.sh', 'README.md',

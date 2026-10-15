@@ -5,7 +5,7 @@ _srcdir=dynis-1.0.12
 pkgdesc="A dynamic island for Hyprland using Quickshell"
 arch=('x86_64')
 url="https://github.com/fanat-sira/dynis"
-license=('GPL-3.0-or-later')
+license=('MIT')
 depends=(
     'glib2'
     'qt6-base'
@@ -34,7 +34,7 @@ install='dynis.install'
 # Generated from the reviewed checkout by scripts/prepare-source.py.
 # For a published release, replace the local filename with its immutable asset URL.
 source=("$pkgname-$pkgver.tar.gz")
-sha256sums=('cec6cd493ce4fad737910f361202625392e34ee5d2598b4bdb10d12a5b0aa5b3')
+sha256sums=('5c8071e249b1d30edd58b45ecd7762a2962d51662c6bf056440e5a24a56c9ba6')
 
 build() {
   cmake -S "$_srcdir" -B build \
