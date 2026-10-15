@@ -1,92 +1,109 @@
 # Dynis
 
-Dynis is a top-center Dynamic Island for **Hyprland**, built with **Quickshell**, QML, and Qt 6. It stays compact at rest and expands for notifications, media controls, quick settings, workspace overview, and system feedback.
+A compact Dynamic Island for **Hyprland**, built with **Quickshell**, QML, and a Qt 6 backend. A small clock at rest, with animated transitions into media controls, notifications, workspace previews, and system status.
 
-Based on [enhaoswen/Tide-island](https://github.com/enhaoswen/Tide-island).
+![Dynis application launcher over a desktop wallpaper](docs/images/launcher.jpg)
 
-> This is an actively developed personal desktop-shell project. Expect occasional breaking changes and rough edges.
+*Keyboard-driven application launcher, with the island tucked into the top edge.*
 
-## Features
+![Expanded Dynis preview showing workspaces, date, time, volume, CPU, and RAM](docs/images/island-preview.jpg)
 
-- Top-center clock and status capsule with animated transitions
-- Freedesktop desktop notifications, including application icons and image previews
-- Media controls, MPRIS metadata, optional synced lyrics, and CAVA visualizer
-- Control center for volume, brightness, Wi-Fi, Bluetooth, battery, and power profiles
-- Hyprland workspace indicator and overview
-- Keyboard-driven application launcher and clipboard picker
-- Fullscreen-aware visibility and rounded top screen corners
-- Per-user JSON configuration in `~/.config/dynis/userconfig.json`
+*Expanded status preview with workspace indicators, volume, and CPU/RAM graphs.*
+
+The screenshots show a customized desktop. Wallpaper and compositor effects are not bundled; fonts and appearance can differ from the defaults.
+
+## What it does
+
+- **Adaptive island** — clock, horizontal swipe views, volume/brightness feedback, recording indicator, and fullscreen-aware visibility.
+- **System preview** — workspace indicators, date and time, volume status, and CPU/RAM usage with history graphs. Can be shown while holding Super using the bindings below.
+- **Media** — MPRIS playback controls, track metadata, cover art, optional synced lyrics, and CAVA visualization.
+- **Notifications** — desktop notification popups with application icons and image previews.
+- **Workspaces** — per-monitor workspace strip and an overview for navigating windows and workspaces.
+- **Connectivity** — Wi-Fi and Bluetooth views, with network selection and pairing controls.
+- **Launcher and clipboard** — searchable application list, keyboard navigation, usage-based application ranking, and a cliphist picker.
+- **Personalization** — watched JSON configuration, bundled Xanh Mono and Symbols Nerd Font, rounded screen corners, and edge shadows.
+
+This is a personal desktop-shell project in active development. Some integrations depend on your compositor, hardware, permissions, and installed services. The former standalone control-center click actions are retained for compatibility but currently return the island to its resting state.
 
 ## Requirements
 
-Required runtime dependencies:
+Run Dynis inside a **Hyprland Wayland session**. It is not a standalone desktop environment.
 
-- Hyprland and Quickshell
-- Qt 6 with QML support
-- `hyprctl`, `wpctl`, `pactl`, and `brightnessctl`
-- UPower, BlueZ, and `libudev`
+| Component | Purpose |
+| --- | --- |
+| Quickshell with Hyprland, Wayland, Bluetooth, MPRIS, and Notifications modules | QML shell runtime |
+| Qt 6 development packages, CMake 3.16+, a C++17 compiler, libudev development files | Build the backend and helpers |
+| Qt 6 Core, Gui, Qml, Network, DBus, Test, Concurrent | Modules required by the CMake build |
+| `hyprctl`, `wpctl`, `pactl`, `brightnessctl` | Compositor, audio, and backlight integration |
+| UPower and BlueZ | Battery and Bluetooth integration |
 
-Optional integrations: NetworkManager or iwd (Wi-Fi), CAVA, an MPRIS-capable player, a Nerd Font, ImageMagick (wallpaper thumbnails), and TLP (power profiles).
+Optional integrations:
 
-For Debian/Ubuntu-like distributions, the included installer can install dependencies and build Quickshell:
+| Component | Enables |
+| --- | --- |
+| NetworkManager or iwd | Wi-Fi management |
+| MPRIS-capable player | Media metadata and playback controls |
+| `cava` | Audio visualizer |
+| `cliphist` and `wl-clipboard` | Clipboard history and selection |
+| ImageMagick | Wallpaper thumbnails |
+| TLP | Power-profile backend where available |
+| A compatible compositor glass plugin | Refraction and backdrop effects |
+
+Package names vary by distribution. Quickshell and its Qt runtime must be compatible with the Qt version used to build Dynis.
+
+## Build and try it
 
 ```bash
-./scripts/install-debian-ubuntu.sh
-```
-
-Pass `--help` to see its options. Review the script before running it: it uses `sudo` and installs system packages.
-
-## Build and run
-
-Install the bundled font set first. This makes the default configuration match the project appearance:
-
-```bash
+git clone https://github.com/fanat-sira/dynis.git
+cd dynis
 ./scripts/install-fonts.sh
-```
-
-```bash
-cmake -S . -B build-release -DCMAKE_BUILD_TYPE=Release
-cmake --build build-release -j"$(nproc)"
-ctest --test-dir build-release --output-on-failure
-```
-
-To run the checkout without installing it:
-
-```bash
-BUILD_DIR="$PWD/build-release" ./run-local.sh
-```
-
-Useful IPC commands while running locally:
-
-```bash
-qs ipc -p "$PWD" call dynis togglePlayer
-qs ipc -p "$PWD" call dynis showClock
-qs ipc -p "$PWD" call overview toggle
-```
-
-## Install
-
-```bash
 cmake -S . -B build-release -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr
-cmake --build build-release -j"$(nproc)"
+cmake --build build-release -j2
+ctest --test-dir build-release --output-on-failure
+BUILD_DIR="$PWD/build-release" QUICKSHELL_LYRICS_BACKEND="$PWD/build-release/lyricsmpris" ./run-local.sh
+```
+
+The font script installs the bundled fonts for your user. `run-local.sh` loads the backend from the specified build directory; the lyrics environment variable selects the helper from that same build.
+
+Run only one Dynis instance at a time. If you already use the installed service, stop it with `systemctl --user stop dynis` before trying the checkout.
+
+Dynis owns `org.freedesktop.Notifications`. Stop any other notification daemon, such as dunst or mako, before starting it. Notification actions, inline replies, and persistent notification history are not currently advertised by the server.
+
+### Install system-wide
+
+After building with the `/usr` prefix above:
+
+```bash
 sudo cmake --install build-release
 systemctl --user daemon-reload
 systemctl --user enable --now dynis
 ```
 
-The installation also places Dynis fonts under `/usr/share/fonts/dynis`; the installed QML files live at `/usr/share/dynis`, and the user service is `dynis.service`.
+QML files are installed to `/usr/share/dynis`, helper executables to `/usr/share/dynis/bin`, and bundled fonts to `/usr/share/fonts/dynis`. The launcher is `dynis`; the user service is `dynis.service`. Use `/usr` for installation: some helper and service paths still assume it.
 
-To inspect or restart it:
+Alternatively, start `dynis` from Hyprland:
 
-```bash
-systemctl --user status dynis
-systemctl --user restart dynis
-journalctl --user -u dynis -f
+```conf
+exec-once = dynis
 ```
 
-## Hyprland binds
+Choose either the service or `exec-once` to avoid duplicate instances.
 
-Add bindings such as these to your Hyprland configuration after installing:
+### Debian / Ubuntu helper
+
+An optional installer installs system dependencies, builds Quickshell if needed, builds Dynis, and starts the user service by default:
+
+```bash
+./scripts/install-debian-ubuntu.sh --help
+# Review the script before running it; it installs packages using sudo.
+./scripts/install-debian-ubuntu.sh --no-enable-service
+```
+
+Availability depends on your distribution's packages. This is not a promise of compatibility with every Debian or Ubuntu release.
+
+## Hyprland bindings
+
+Add the bindings you want to your Hyprland configuration. These examples assume `$mainMod` is already defined, usually as `SUPER`.
 
 ```conf
 bind = $mainMod, M, exec, qs ipc -p /usr/share/dynis call dynis togglePlayer
@@ -96,66 +113,84 @@ bind = $mainMod, right, exec, qs ipc -p /usr/share/dynis call dynis showLyrics
 bind = $mainMod, TAB, exec, qs ipc -p /usr/share/dynis call overview toggle
 bind = ALT, SPACE, exec, qs ipc -p /usr/share/dynis call dynis launcher
 bind = $mainMod, V, exec, qs ipc -p /usr/share/dynis call dynis clipboard
+bind = $mainMod, W, exec, qs ipc -p /usr/share/dynis call dynis showWifi
+bind = $mainMod, B, exec, qs ipc -p /usr/share/dynis call dynis showBluetooth
+
+# Show the status preview while holding the left Super key.
+bind = $mainMod, SUPER_L, exec, qs ipc -p /usr/share/dynis call dynis mainModDown
+bindr = $mainMod, SUPER_L, exec, qs ipc -p /usr/share/dynis call dynis mainModUp
 ```
 
-For a local checkout, replace `/usr/share/dynis` with the absolute path to that checkout. The island and rounded-corner windows use the `dynis-capsule` and `dynis-corners` layer-shell namespaces; this rule is recommended:
+For a local run, replace `/usr/share/dynis` with the absolute checkout path. IPC must target the same path used to launch Quickshell. Bindings are examples and may conflict with your existing shortcuts.
 
-```conf
-layerrule = noanim, dynis-capsule
-```
+Default island interactions: left-click toggles the media player; horizontal dragging switches side views. The default secondary action is the legacy `toggleControlCenter`, which currently restores the resting view. Set it to `toggleOverview` or `toggleLyrics` for an alternative action.
 
-For compositor-level liquid glass, use a maintained Hyprland plugin with
-layer-shell alpha-mask support, configured only for `dynis-capsule` and
-`dynis-launcher`. Do not add `layerrule = blur` for those namespaces when the
-glass plugin manages their backdrop.
+### Glass and compositor styling
 
-## Launcher and clipboard
+Dynis creates separate surfaces for compositor glass effects. The optical carrier namespaces are **`dynis-glass-island`** and **`dynis-glass-launcher`**; the interactive surfaces use **`dynis-capsule`** and **`dynis-launcher`**. Rounded corners use `dynis-corners`, and the workspace strip uses `dynis-left-island`.
 
-The application launcher is opened with `Alt+Space`; the clipboard picker is opened with `Super+V` in the example binds above. Both support typing to filter, `Up`/`Down` to change the selection, `Enter` to activate it, and `Esc` to close.
-
-Application results learn from successful launches made through Dynis. The launcher stores a small rolling seven-day history in:
-
-```text
-~/.config/dynis/launcher-usage.json
-```
-
-With an empty query, recently and frequently used applications are shown first using a time-decayed score. While searching, match quality takes priority and usage only breaks ties. Mouse-wheel scrolling moves three rows per notch and synchronizes the keyboard selection with the centre of the visible list.
-
-The clipboard picker requires `cliphist` and `wl-copy` (`wl-clipboard`).
+Refraction needs a compatible compositor plugin configured for the carrier surfaces. Dynis does not install or configure that plugin. Without compositor effects, the intentionally near-transparent surfaces will not reproduce the screenshot backdrop. Avoid applying a second blur effect to a surface already managed by your glass plugin. Layer-rule syntax depends on your Hyprland version.
 
 ## Configuration
 
-Dynis reads and watches:
-
-```text
-~/.config/dynis/userconfig.json
-```
-
-Run `/usr/share/dynis/bin/dynis-setup --wizard` to create and edit it interactively. The default visual preset uses `Xanh Mono` for text and `Symbols Nerd Font` for icons; both are bundled with Dynis. Common options include `wallpaperPath`, font families, island click actions, `dynamicIslandLeftSwipeItems`, and `disableAutoExpandOnTrackChange`.
-
-`tlpSudoPassword` may be stored in this file only when TLP's `password` mode is explicitly selected. Treat the file as private: do not commit or share it. `MUSIXMATCH_API_KEY`, if used for lyrics, is read from the environment rather than from the repository.
-
-## Notifications
-
-Dynis owns `org.freedesktop.Notifications`; do not run another notification daemon (such as dunst) alongside it. A quick smoke test:
+Dynis watches `$XDG_CONFIG_HOME/dynis/userconfig.json`, defaulting to `~/.config/dynis/userconfig.json`. After installation, use the interactive setup tool:
 
 ```bash
-notify-send "Dynis" "Hello from the island"
+/usr/share/dynis/bin/dynis-setup --wizard
 ```
+
+Or copy the [example configuration](config/userconfig.example.json) to that location if you do not already have a config. Keep the file valid JSON; changes are watched automatically.
+
+| Option | Purpose |
+| --- | --- |
+| `wallpaperPath` | Wallpaper source for overview thumbnails |
+| `textFontFamily`, `timeFontFamily`, `heroFontFamily` | Text fonts; default: Xanh Mono |
+| `iconFontFamily` | Icon font; default: Symbols Nerd Font |
+| `dynamicIslandPrimaryAction`, `dynamicIslandSecondaryAction` | Click actions, such as `toggleExpandedPlayer`, `toggleOverview`, `toggleLyrics`, or `showTime` |
+| `dynamicIslandPrimaryButton`, `dynamicIslandSecondaryButton` | Mouse buttons; defaults: `1` and `3` |
+| `dynamicIslandLeftSwipeItems` | Items in the custom side view; defaults: `cava`, `battery` |
+| `disableAutoExpandOnTrackChange` | Keep the player from expanding automatically |
+| `screenCornerRadius`, `screenEdgeShadowEnabled` | Screen-corner and edge styling |
+| `workspaceOverviewWindowDragButton` | Button used to drag overview windows |
+
+### Local data and lyrics
+
+- User configuration can contain a TLP sudo password if you explicitly choose its `password` permission mode. Keep it private; the repository ignores local configuration files.
+- Application ranking keeps a rolling seven-day usage history. **Currently it writes `launcher-usage.json` beside `shell.qml`**, not in the user config directory. It is ignored by Git; persistence may fail for a system installation where `/usr/share/dynis` is read-only to your user. Do not change system-directory permissions to work around this.
+- Clipboard history is supplied by `cliphist`. Dynis does not start a clipboard-history watcher; configure one separately if you want history collection.
+- The lyrics helper contacts external lyric providers using track metadata. Synced lyrics depend on provider availability and matching; `MUSIXMATCH_API_KEY` is optional and read from the environment. Do not put API keys in the repository.
+
+## Troubleshooting
+
+Inspect an installed service:
+
+```bash
+systemctl --user status dynis
+journalctl --user -u dynis -b --no-pager -n 100
+systemctl --user restart dynis
+```
+
+- **Backend import fails:** rebuild after Qt upgrades. For a checkout, use `run-local.sh` with the correct `BUILD_DIR`; for an installed copy, rebuild and reinstall.
+- **Missing icons or unexpected typography:** install the bundled fonts and check your JSON font overrides. A personal configuration takes precedence over the defaults.
+- **No notifications:** check for another notification daemon owning the D-Bus name. Test with `notify-send "Dynis" "Hello from the island"`.
+- **Empty clipboard picker:** check that `cliphist list` has entries and that `wl-copy` is installed.
+- **No lyrics in a local build:** set `QUICKSHELL_LYRICS_BACKEND` to the absolute path of the built `lyricsmpris` executable, as in the run example.
+- **Service cannot reach the desktop:** check that the user service has the current Wayland and Hyprland session environment. Running `./run-local.sh` from a terminal inside the session helps separate service setup from shell errors.
 
 ## Development
 
+The interface lives in `shell.qml`, the root window components, and [`qml/`](qml/). [`backend/`](backend/) contains the C++ Qt module; [`lyricsmpris/`](lyricsmpris/) contains the lyrics helper. [`tests/`](tests/) covers lyrics processing and user configuration, not full desktop interaction.
+
 ```bash
-qmllint DynamicIslandWindow.qml qml/island/NotificationLayer.qml shell.qml
-cmake --build build-release -j"$(nproc)"
+cmake --build build-release -j2
 ctest --test-dir build-release --output-on-failure
 git diff --check
 ```
 
-The QML interface lives in `shell.qml`, `DynamicIslandWindow.qml`, and `qml/`. The Qt backend module is in `backend/`; `lyricsmpris/` contains the lyrics helper and `tests/` contains its test coverage.
+Restart Quickshell after backend changes. For bug reports, include your Hyprland, Quickshell, and Qt versions, steps to reproduce, and relevant logs with personal data removed.
 
-## License
+## Credits and license
 
-Dynis is distributed under the [GNU GPL v3.0](LICENSE).
+Based on [enhaoswen/Tide-island](https://github.com/enhaoswen/Tide-island).
 
-Bundled fonts retain their own licenses; see [`fonts/`](fonts/).
+Dynis is distributed under the [GNU GPL v3.0](LICENSE). Bundled fonts retain their own licenses; see [`fonts/`](fonts/). Screenshot wallpaper is not included in the software distribution.

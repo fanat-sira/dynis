@@ -4,7 +4,7 @@ pkgrel=1
 _srcdir=dynis-main
 pkgdesc="A dynamic island for Hyprland using Quickshell"
 arch=('x86_64')
-url="https://github.com/vs6a-test/dynis"
+url="https://github.com/fanat-sira/dynis"
 license=('GPL-3.0-or-later')
 depends=(
     'qt6-base'

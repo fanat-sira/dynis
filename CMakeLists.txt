@@ -121,6 +121,8 @@ install(FILES
     shell.qml
     DynamicIslandWindow.qml
     LauncherWindow.qml
+    IslandGlassCarrier.qml
+    WorkspaceIslandWindow.qml
     RoundedScreenCornersWindow.qml
     DESTINATION ${CMAKE_INSTALL_DATADIR}/dynis
 )

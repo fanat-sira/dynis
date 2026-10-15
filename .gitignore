@@ -1,7 +1,8 @@
 # CMake/build outputs
-build/
-build-*/
-out/
+/build/
+/build-*/
+/cmake-build-*/
+/out/
 CMakeFiles/
 CMakeCache.txt
 CMakeUserPresets.json
@@ -11,8 +12,12 @@ CTestTestfile.cmake
 DartConfiguration.tcl
 Testing/
 Makefile
-install_manifest.txt
-!CMakeLists.txt
+install_manifest*.txt
+CMakeConfigureLog.yaml
+.ninja_deps
+.ninja_log
+build.ninja
+rules.ninja
 
 # C/C++ generated binaries and objects
 *.a
@@ -25,6 +30,8 @@ install_manifest.txt
 *.obj
 *.so
 *.so.*
+*.pdb
+*.d
 
 # Qt/QML generated files
 *_autogen/
@@ -38,11 +45,15 @@ ui_*.h
 .qmake.stash
 .qmlls.ini
 .runtime-qml/
+.qmlcache/
+# Precompiled shaders (*.qsb) are shipped assets: keep them trackable.
 
 # Test and coverage artifacts
 *.gcda
 *.gcno
 *.gcov
+*.profraw
+*.profdata
 coverage/
 
 # Python helper cache
@@ -50,8 +61,8 @@ __pycache__/
 *.py[cod]
 
 # Arch Linux packaging
-pkg/
-src/
+/pkg/
+/src/
 *.pkg.tar*
 *.src.tar*
 *.tar.gz
@@ -60,6 +71,11 @@ src/
 *.zip
 
 # Local runtime/cache artifacts
+*.log
+*.pid
+*.pid.lock
+/core
+/core.[0-9]*
 .cache/
 .code-review-graph
 CODE_QUALITY_REVIEW.md
@@ -67,7 +83,19 @@ CODE_QUALITY_REVIEW.md
 # Local agent/tooling state
 .agents/
 .codex/
+.claude/
 CLAUDE.md
+
+# Local launcher history
+launcher-usage.json
+
+# Local secrets (keep sanitized examples trackable)
+.env
+.env.*
+!.env.example
+!.env.*.example
+!.env.sample
+!.env.template
 
 # Local Dynis configuration may contain Wi-Fi or TLP credentials.
 userconfig.json
@@ -75,11 +103,13 @@ dynis.local.json
 
 # Runtime helpers copied from the installed Dynis package; source builds
 # generate these under the build/install prefix instead.
-bin/
+/bin/
 
 # IDEs/editors
 .vscode/
 .idea/
+.clangd/
+*.code-workspace
 *.user
 *.autosave
 *.swp
@@ -89,3 +119,5 @@ bin/
 # OS files
 .DS_Store
 Thumbs.db
+Desktop.ini
+._*
