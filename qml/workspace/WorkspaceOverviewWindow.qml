@@ -23,10 +23,10 @@ Item {
     property bool forcePreviewActive: false
     property var positionOverride: null
     property real visibilityOpacity: 1
-    property real topLeftRadius: 18
-    property real topRightRadius: 18
-    property real bottomLeftRadius: 18
-    property real bottomRightRadius: 18
+    property real topLeftRadius: 0
+    property real topRightRadius: 0
+    property real bottomLeftRadius: 0
+    property real bottomRightRadius: 0
 
     readonly property real widthRatio: {
         if (!widgetMonitor || !monitorData)

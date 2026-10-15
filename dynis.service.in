@@ -6,6 +6,10 @@ PartOf=graphical-session.target
 [Service]
 Type=simple
 ExecStart=@CMAKE_INSTALL_FULL_BINDIR@/dynis
+# Applications launched from the Dynis picker inherit this service's cgroup.
+# Do not kill them when Quickshell itself is restarted or upgraded.
+KillMode=process
+TimeoutStopSec=5s
 Restart=always
 RestartSec=3
 

@@ -32,8 +32,8 @@ Item {
     property int batteryIconHeight: 15
     property int batteryTipWidth: 3
     property int batteryTipHeight: 7
-    property int batteryOuterRadius: 5
-    property int batteryInnerRadius: 3
+    property int batteryOuterRadius: 0
+    property int batteryInnerRadius: 0
     property real iconVerticalOffset: 1
     property int recordingDotSpacing: 12
     readonly property string chargingIconGlyph: "\uf0e7"
@@ -179,7 +179,7 @@ Item {
                         Rectangle {
                             width: root.batteryTipWidth
                             height: root.batteryTipHeight
-                            radius: Math.round(root.batteryTipWidth / 2)
+                            radius: 0
                             color: StyleTokens.textMuted
                             anchors.right: parent.right
                             anchors.verticalCenter: parent.verticalCenter

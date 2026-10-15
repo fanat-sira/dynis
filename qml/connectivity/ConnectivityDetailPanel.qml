@@ -81,7 +81,7 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        radius: 28
+        radius: 0
         color: StyleTokens.module
         opacity: 0.9
     }
@@ -127,7 +127,7 @@ Item {
             Rectangle {
                 width: parent.width
                 height: visible ? 64 : 0
-                radius: 16
+                radius: 0
                 color: StyleTokens.transparent
                 visible: root.isWifi && root.provider && root.provider.wifiEnabled && root.provider.wifiCurrentSsid.length > 0
 
@@ -260,7 +260,7 @@ Item {
                         ? 122
                         : ((root.provider && root.provider.bluetoothPairingRequiresConfirmation) ? 110 : 82))
                     : 0
-                radius: 16
+                radius: 0
                 color: StyleTokens.prompt
                 visible: root.isBluetooth && root.provider && root.provider.bluetoothPairingActive
                 clip: true
@@ -315,7 +315,7 @@ Item {
                                 ? Math.max(0, parent.width - bluetoothPrimaryButton.width - bluetoothCancelButton.width - 16)
                                 : 0
                             height: 34
-                            radius: 12
+                            radius: 0
                             color: StyleTokens.input
                             border.color: StyleTokens.inputBorder
                             border.width: 1
@@ -373,7 +373,7 @@ Item {
                             id: bluetoothPrimaryButton
                             width: root.provider && root.provider.bluetoothPairingRequiresInput ? 50 : 76
                             height: 34
-                            radius: 12
+                            radius: 0
                             color: StyleTokens.accent
 
                             Text {
@@ -405,7 +405,7 @@ Item {
                             id: bluetoothCancelButton
                             width: 58
                             height: 34
-                            radius: 12
+                            radius: 0
                             color: StyleTokens.secondaryButton
 
                             Text {
@@ -433,7 +433,7 @@ Item {
                 id: wifiPasswordPrompt
                 width: parent.width
                 height: visible ? 92 : 0
-                radius: 16
+                radius: 0
                 color: StyleTokens.prompt
                 visible: root.isWifi && root.provider && root.provider.wifiPendingPasswordSsid.length > 0
                 clip: true
@@ -465,7 +465,7 @@ Item {
                         anchors.rightMargin: 8
                         anchors.bottom: parent.bottom
                         height: 34
-                        radius: 12
+                        radius: 0
                         color: StyleTokens.input
                         border.color: StyleTokens.inputBorder
                         border.width: 1
@@ -520,7 +520,7 @@ Item {
                         anchors.bottom: parent.bottom
                         width: 50
                         height: 34
-                        radius: 12
+                        radius: 0
                         color: StyleTokens.accent
 
                         Text {
@@ -547,7 +547,7 @@ Item {
                         anchors.bottom: parent.bottom
                         width: 50
                         height: 34
-                        radius: 12
+                        radius: 0
                         color: StyleTokens.secondaryButton
 
                         Text {
@@ -615,7 +615,7 @@ Item {
                     delegate: Rectangle {
                         width: contentColumn.width
                         height: visible ? 52 : 0
-                        radius: 14
+                        radius: 0
                         color: StyleTokens.transparent
                         visible: root.wifiEntryVisible(connected)
                         clip: true

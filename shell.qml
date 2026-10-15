@@ -129,6 +129,48 @@ Scope {
             shellRoot.openOverviewAll();
     }
 
+    function openLauncherAll() {
+        const windows = launcherVariants.instances ? launcherVariants.instances : [];
+        let target = null;
+        for (let index = 0; index < windows.length; index++) {
+            const window = windows[index];
+            if (window && window.monitorFocused) {
+                target = window;
+                break;
+            }
+        }
+        if (!target && windows.length > 0)
+            target = windows[0];
+        for (let index = 0; index < windows.length; index++) {
+            const window = windows[index];
+            if (window && window !== target)
+                window.close();
+        }
+        if (target)
+            target.openLauncher();
+    }
+
+    function openClipboardAll() {
+        const windows = launcherVariants.instances ? launcherVariants.instances : [];
+        let target = null;
+        for (let index = 0; index < windows.length; index++) {
+            const window = windows[index];
+            if (window && window.monitorFocused) {
+                target = window;
+                break;
+            }
+        }
+        if (!target && windows.length > 0)
+            target = windows[0];
+        for (let index = 0; index < windows.length; index++) {
+            const window = windows[index];
+            if (window && window !== target)
+                window.close();
+        }
+        if (target)
+            target.openClipboard();
+    }
+
     function forFocusedWindow(callback) {
         const windows = panelVariants.instances ? panelVariants.instances : [];
         for (let index = 0; index < windows.length; index++) {
@@ -205,6 +247,16 @@ Scope {
         function mainmodup() {
             shellRoot.setMainModPreviewAll(false);
         }
+
+        function launcher() { shellRoot.openLauncherAll(); }
+        function clipboard() { shellRoot.openClipboardAll(); }
+        function closeLauncher() {
+            const windows = launcherVariants.instances ? launcherVariants.instances : [];
+            for (let index = 0; index < windows.length; index++) {
+                const window = windows[index];
+                if (window) window.close();
+            }
+        }
     }
 
     GlobalShortcut {
@@ -251,12 +303,24 @@ Scope {
         SystemServices.requestScreenRecordingSnapshot();
     }
 
+    // Draw the four opaque corner masks above every monitor.  This is kept
+    // separate from the island so its radius never depends on island state.
     Variants {
+        id: screenCornerVariants
         model: Quickshell.screens
 
         RoundedScreenCornersWindow {
             required property var modelData
+            screen: modelData
+        }
+    }
 
+    Variants {
+        id: launcherVariants
+        model: Quickshell.screens
+
+        LauncherWindow {
+            required property var modelData
             screen: modelData
         }
     }
@@ -275,9 +339,11 @@ Scope {
     }
 
     Variants {
-        model: Quickshell.screens
+        // Workspaces now live in the main top island.
+        // Keep the old bottom host available in the source, but do not create it.
+        model: []
 
-        LeftIsland {
+        WorkspaceIslandWindow {
             required property var modelData
 
             screen: modelData

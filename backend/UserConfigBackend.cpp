@@ -37,6 +37,16 @@ int jsonInt(const QJsonObject &object, QLatin1String key, int fallback)
     return std::isfinite(number) ? qRound(number) : fallback;
 }
 
+double jsonDouble(const QJsonObject &object, QLatin1String key, double fallback)
+{
+    const QJsonValue value = object.value(key);
+    if (!value.isDouble())
+        return fallback;
+
+    const double number = value.toDouble();
+    return std::isfinite(number) ? number : fallback;
+}
+
 QVariantList jsonArray(const QJsonObject &object, QLatin1String key, const QVariantList &fallback)
 {
     const QJsonValue value = object.value(key);
@@ -199,6 +209,31 @@ bool UserConfigBackend::disableAutoExpandOnTrackChange() const
     return m_disableAutoExpandOnTrackChange;
 }
 
+int UserConfigBackend::screenCornerRadius() const
+{
+    return m_screenCornerRadius;
+}
+
+bool UserConfigBackend::screenEdgeShadowEnabled() const
+{
+    return m_screenEdgeShadowEnabled;
+}
+
+int UserConfigBackend::screenEdgeShadowRadius() const
+{
+    return m_screenEdgeShadowRadius;
+}
+
+qreal UserConfigBackend::screenEdgeShadowOpacity() const
+{
+    return m_screenEdgeShadowOpacity;
+}
+
+QString UserConfigBackend::screenEdgeShadowColor() const
+{
+    return m_screenEdgeShadowColor;
+}
+
 void UserConfigBackend::setDefaultWallpaperPath(const QString &path)
 {
     if (m_defaultWallpaperPath == path)
@@ -313,6 +348,11 @@ void UserConfigBackend::loadConfig()
     updateField(this, m_dynamicIslandSecondaryAction, jsonString(configObject, QLatin1String("dynamicIslandSecondaryAction"), QStringLiteral("restoreRestingCapsule")), &UserConfigBackend::dynamicIslandSecondaryActionChanged);
     updateField(this, m_dynamicIslandLeftSwipeItems, jsonArray(configObject, QLatin1String("dynamicIslandLeftSwipeItems"), defaultDynamicIslandLeftSwipeItems()), &UserConfigBackend::dynamicIslandLeftSwipeItemsChanged);
     updateField(this, m_disableAutoExpandOnTrackChange, jsonBool(configObject, QLatin1String("disableAutoExpandOnTrackChange"), false), &UserConfigBackend::disableAutoExpandOnTrackChangeChanged);
+    updateField(this, m_screenCornerRadius, jsonInt(configObject, QLatin1String("screenCornerRadius"), 15), &UserConfigBackend::screenCornerRadiusChanged);
+    updateField(this, m_screenEdgeShadowEnabled, jsonBool(configObject, QLatin1String("screenEdgeShadowEnabled"), true), &UserConfigBackend::screenEdgeShadowEnabledChanged);
+    updateField(this, m_screenEdgeShadowRadius, jsonInt(configObject, QLatin1String("screenEdgeShadowRadius"), 24), &UserConfigBackend::screenEdgeShadowRadiusChanged);
+    updateField(this, m_screenEdgeShadowOpacity, jsonDouble(configObject, QLatin1String("screenEdgeShadowOpacity"), 0.35), &UserConfigBackend::screenEdgeShadowOpacityChanged);
+    updateField(this, m_screenEdgeShadowColor, jsonString(configObject, QLatin1String("screenEdgeShadowColor"), QStringLiteral("#000000")), &UserConfigBackend::screenEdgeShadowColorChanged);
 
     updateWatchedPaths();
 }

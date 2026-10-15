@@ -16,22 +16,27 @@ PanelWindow {
     readonly property bool monitorFocused: hyprMonitor ? hyprMonitor.focused : false
     readonly property int currentMonitorWorkspaceId: hyprMonitor && hyprMonitor.activeWorkspace
         ? hyprMonitor.activeWorkspace.id : 1
+    readonly property var nativeWorkspaceValues: Hyprland.workspaces.values
 
     readonly property var userConfig: UserConfig
     readonly property string textFontFamily: userConfig.textFontFamily
+    property bool workspaceGeometryTraceEnabled: false
+    readonly property real workspacePillTargetWidth: Math.max(root.pillHeight, contentRow.implicitWidth + 12)
 
-    readonly property real pillEdgeMargin: 14
-    readonly property real pillTopInset: 13
+    // Align to Hyprland's visible 20px outer gap.
+    readonly property real pillEdgeMargin: 20
+    readonly property real pillTopInset: 20
     readonly property real pillHeight: 32
-    readonly property real pillRadius: 16
+    readonly property real pillRadius: 0
+    readonly property real workspaceBottomInset: 0
 
     readonly property bool fullscreenShellHidden: currentWorkspaceHasFullscreenWindow()
 
     color: StyleTokens.transparent
     visible: !fullscreenShellHidden
-    anchors { top: true; left: true; right: true }
-    implicitHeight: Math.ceil(pillTopInset + pillHeight + 8)
-    exclusiveZone: 0
+    // Full-width bottom layer; the capsule itself is centered inside it.
+    anchors { bottom: true; left: true; right: true }
+    implicitHeight: Math.ceil(pillHeight)
     exclusionMode: ExclusionMode.Ignore
     aboveWindows: true
     focusable: false
@@ -43,10 +48,10 @@ PanelWindow {
     mask: Region {
         Region {
             intersection: Intersection.Combine
-            x: Math.floor(pill.x)
-            y: Math.floor(pill.y)
-            width: pill.visible ? Math.ceil(pill.width) : 0
-            height: pill.visible ? Math.ceil(pill.height) : 0
+            x: Math.floor(workspaceIslandV2.x)
+            y: Math.floor(workspaceIslandV2.y)
+            width: Math.ceil(workspaceIslandV2.width)
+            height: Math.ceil(workspaceIslandV2.height)
         }
     }
 
@@ -66,13 +71,17 @@ PanelWindow {
     function computeWorkspaceIds() {
         const seen = {};
         const ids = [];
-        const list = listValues(hyprlandData.workspaces);
+        // Show every workspace that actually contains a mapped window. This
+        // avoids transient empty workspaces emitted during a switch, while
+        // retaining the currently selected empty workspace.
+        const list = listValues(hyprlandData.windowList);
         for (let i = 0; i < list.length; i++) {
-            const ws = list[i];
-            if (!ws) continue;
-            const wsId = Number(ws.id);
+            const windowData = list[i];
+            if (!windowData || !windowData.mapped || windowData.hidden) continue;
+            const wsId = windowData.workspace ? Number(windowData.workspace.id) : NaN;
             if (!isFinite(wsId) || wsId < 1 || wsId > 100) continue;
-            const wsMonitor = String(ws.monitor || "");
+            const wsMonitor = windowData.monitorName !== undefined
+                ? String(windowData.monitorName) : "";
             if (hyprMonitorName !== "" && wsMonitor !== "" && wsMonitor !== hyprMonitorName) continue;
             if (seen[wsId]) continue;
             seen[wsId] = true;
@@ -89,6 +98,8 @@ PanelWindow {
         const desiredSet = {};
         for (let i = 0; i < desiredIds.length; i++) desiredSet[desiredIds[i]] = true;
 
+        // Keep the list dynamic: empty workspaces that Hyprland has removed
+        // disappear from the island as well.
         for (let i = workspaceModel.count - 1; i >= 0; i--) {
             const existingId = workspaceModel.get(i).wsId;
             if (!desiredSet[existingId])
@@ -107,6 +118,7 @@ PanelWindow {
                 insertAt++;
             workspaceModel.insert(insertAt, { wsId: targetId });
         }
+
     }
 
     function currentWorkspaceHasFullscreenWindow() {
@@ -138,27 +150,39 @@ PanelWindow {
         id: workspaceModel
     }
 
-    Connections {
-        target: hyprlandData
-        function onWorkspacesChanged() { root.syncWorkspaceModel(); }
+    onNativeWorkspaceValuesChanged: syncWorkspaceModel()
+    onWorkspacePillTargetWidthChanged: {
+        if (workspaceGeometryTraceEnabled)
+            console.log("[WS GEOMETRY TARGET]", workspacePillTargetWidth, Date.now());
     }
 
+    Connections {
+        target: hyprlandData
+        function onWindowListChanged() { root.syncWorkspaceModel(); }
+    }
+    // Keep a newly selected empty workspace in the model immediately.
     onCurrentMonitorWorkspaceIdChanged: syncWorkspaceModel()
     onHyprMonitorNameChanged: syncWorkspaceModel()
     Component.onCompleted: syncWorkspaceModel()
 
     Rectangle {
         id: pill
+        visible: false
         x: root.pillEdgeMargin
         y: root.pillTopInset
         height: root.pillHeight
         radius: root.pillRadius
         color: StyleTokens.black
-        width: Math.max(root.pillHeight, contentRow.implicitWidth + 12)
+        width: root.workspacePillTargetWidth
+
+        onWidthChanged: {
+            if (root.workspaceGeometryTraceEnabled)
+                console.log("[WS GEOMETRY WIDTH]", width, "target", root.workspacePillTargetWidth, Date.now());
+        }
 
         Behavior on width {
             NumberAnimation {
-                duration: 380
+                duration: 140
                 easing.type: Easing.OutBack
                 easing.overshoot: 1.05
             }
@@ -171,29 +195,34 @@ PanelWindow {
             anchors.leftMargin: 6
             spacing: 2
 
+            onImplicitWidthChanged: {
+                if (root.workspaceGeometryTraceEnabled)
+                    console.log("[WS GEOMETRY ROW]", implicitWidth, Date.now());
+            }
+
             move: Transition {
                 NumberAnimation {
                     properties: "x,y"
-                    duration: 320
-                    easing.type: Easing.OutCubic
+                    duration: 140
+                    easing.type: Easing.OutBack
+                    easing.overshoot: 1.05
                 }
             }
             add: Transition {
                 NumberAnimation {
                     property: "opacity"
                     from: 0; to: 1
-                    duration: 260
+                    duration: 100
                     easing.type: Easing.OutCubic
                 }
                 NumberAnimation {
                     property: "scale"
                     from: 0.4; to: 1
-                    duration: 380
+                    duration: 140
                     easing.type: Easing.OutBack
                     easing.overshoot: 1.4
                 }
             }
-
             Repeater {
                 model: workspaceModel
 
@@ -205,9 +234,14 @@ PanelWindow {
                     height: 26
                     anchors.verticalCenter: parent.verticalCenter
 
+                    onXChanged: {
+                        if (root.workspaceGeometryTraceEnabled)
+                            console.log("[WS GEOMETRY X]", wsId, x, Date.now());
+                    }
+
                     Rectangle {
                         anchors.fill: parent
-                        radius: width / 2
+                        radius: 0
                         color: cell.isActive ? StyleTokens.cardFillActive : StyleTokens.transparent
 
                         Behavior on color { ColorAnimation { duration: 220; easing.type: Easing.OutCubic } }
@@ -229,11 +263,28 @@ PanelWindow {
                         acceptedButtons: Qt.LeftButton
                         z: 1
                         onClicked: {
-                            Hyprland.dispatch("workspace " + cell.wsId);
+                            // Hyprland's Lua config provider requires a Lua
+                            // dispatcher expression, not legacy `workspace N`.
+                            Hyprland.dispatch("hl.dsp.focus({ workspace = \""
+                                + cell.wsId + "\", on_current_monitor = true })");
                         }
                     }
                 }
             }
         }
+    }
+
+    WorkspaceIslandV2 {
+        id: workspaceIslandV2
+
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.bottom: parent.bottom
+        anchors.bottomMargin: root.workspaceBottomInset
+        monitorName: root.hyprMonitorName
+        activeWorkspaceId: root.currentMonitorWorkspaceId
+        textFontFamily: root.textFontFamily
+        itemSize: 26
+        spacing: 2
+        horizontalPadding: 6
     }
 }

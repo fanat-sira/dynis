@@ -47,6 +47,30 @@ Item {
         root.windowByAddress = byAddress;
     }
 
+    // A workspace switch produces several Hyprland events. Each snapshot is
+    // a new JS array, so only publish it when the actual workspace topology
+    // changed; this preserves animated delegates between switches.
+    function workspaceTopologyKey(list) {
+        const entries = [];
+        for (let index = 0; index < list.length; index++) {
+            const workspace = list[index];
+            if (!workspace) continue;
+            const id = Number(workspace.id);
+            if (!isFinite(id) || id < 1 || id > 100) continue;
+            entries.push(String(id) + "@" + String(workspace.monitor || ""));
+        }
+        entries.sort();
+        return entries.join("|");
+    }
+
+    function setWorkspacesFromSnapshot(payloadJson) {
+        const rawWorkspaces = root.parseJson(payloadJson, []);
+        const next = rawWorkspaces.filter((workspace) => workspace.id >= 1 && workspace.id <= 100);
+        if (root.workspaceTopologyKey(root.workspaces) !== root.workspaceTopologyKey(next))
+            root.workspaces = next;
+        root.workspacesReady = true;
+    }
+
     function requestRefresh(refreshClients, refreshMonitors, refreshWorkspaces, refreshActiveWorkspace, immediate) {
         clientsRefreshPending = clientsRefreshPending || refreshClients;
         monitorsRefreshPending = monitorsRefreshPending || refreshMonitors;
@@ -176,9 +200,7 @@ Item {
             } else if (requestId === "workspaces") {
                 root.workspacesRequestRunning = false;
                 if (errorString === "") {
-                    const rawWorkspaces = root.parseJson(payloadJson, []);
-                    root.workspaces = rawWorkspaces.filter((workspace) => workspace.id >= 1 && workspace.id <= 100);
-                    root.workspacesReady = true;
+                    root.setWorkspacesFromSnapshot(payloadJson);
                 } else {
                     console.log("[HyprlandData] Failed to read workspaces:", errorString);
                 }

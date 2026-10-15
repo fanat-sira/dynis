@@ -120,13 +120,13 @@ include(GNUInstallDirs)
 install(FILES
     shell.qml
     DynamicIslandWindow.qml
+    LauncherWindow.qml
     RoundedScreenCornersWindow.qml
-    LeftIsland.qml
     DESTINATION ${CMAKE_INSTALL_DATADIR}/dynis
 )
 install(DIRECTORY qml
     DESTINATION ${CMAKE_INSTALL_DATADIR}/dynis
-    FILES_MATCHING PATTERN "*.qml"
+    FILES_MATCHING PATTERN "*.qml" PATTERN "*.qsb"
 )
 
 # Ship the visual font set used by the default Dynis configuration.

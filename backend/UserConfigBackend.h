@@ -36,6 +36,12 @@ class UserConfigBackend final : public QObject {
     Q_PROPERTY(QVariantList dynamicIslandLeftSwipeItems READ dynamicIslandLeftSwipeItems NOTIFY dynamicIslandLeftSwipeItemsChanged FINAL)
     Q_PROPERTY(bool disableAutoExpandOnTrackChange READ disableAutoExpandOnTrackChange NOTIFY disableAutoExpandOnTrackChangeChanged FINAL)
 
+    Q_PROPERTY(int screenCornerRadius READ screenCornerRadius NOTIFY screenCornerRadiusChanged FINAL)
+    Q_PROPERTY(bool screenEdgeShadowEnabled READ screenEdgeShadowEnabled NOTIFY screenEdgeShadowEnabledChanged FINAL)
+    Q_PROPERTY(int screenEdgeShadowRadius READ screenEdgeShadowRadius NOTIFY screenEdgeShadowRadiusChanged FINAL)
+    Q_PROPERTY(qreal screenEdgeShadowOpacity READ screenEdgeShadowOpacity NOTIFY screenEdgeShadowOpacityChanged FINAL)
+    Q_PROPERTY(QString screenEdgeShadowColor READ screenEdgeShadowColor NOTIFY screenEdgeShadowColorChanged FINAL)
+
 public:
     explicit UserConfigBackend(QObject *parent = nullptr);
 
@@ -59,6 +65,11 @@ public:
     QString dynamicIslandSecondaryAction() const;
     const QVariantList &dynamicIslandLeftSwipeItems() const;
     bool disableAutoExpandOnTrackChange() const;
+    int screenCornerRadius() const;
+    bool screenEdgeShadowEnabled() const;
+    int screenEdgeShadowRadius() const;
+    qreal screenEdgeShadowOpacity() const;
+    QString screenEdgeShadowColor() const;
     void setDefaultWallpaperPath(const QString &path);
     void setDefaultTlpSudoPassword(const QString &password);
 
@@ -86,6 +97,11 @@ signals:
     void dynamicIslandSecondaryActionChanged();
     void dynamicIslandLeftSwipeItemsChanged();
     void disableAutoExpandOnTrackChangeChanged();
+    void screenCornerRadiusChanged();
+    void screenEdgeShadowEnabledChanged();
+    void screenEdgeShadowRadiusChanged();
+    void screenEdgeShadowOpacityChanged();
+    void screenEdgeShadowColorChanged();
 
 private:
     void scheduleReload();
@@ -114,6 +130,11 @@ private:
     QString m_dynamicIslandSecondaryAction = QStringLiteral("toggleControlCenter");
     QVariantList m_dynamicIslandLeftSwipeItems;
     bool m_disableAutoExpandOnTrackChange = false;
+    int m_screenCornerRadius = 15;
+    bool m_screenEdgeShadowEnabled = true;
+    int m_screenEdgeShadowRadius = 24;
+    qreal m_screenEdgeShadowOpacity = 0.35;
+    QString m_screenEdgeShadowColor = QStringLiteral("#000000");
 
     QFileSystemWatcher m_watcher;
     QTimer m_reloadTimer;

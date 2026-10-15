@@ -1,5 +1,6 @@
 import QtQuick
 import DynisBackend
+import "../common"
 
 Item {
     id: root
@@ -18,6 +19,7 @@ Item {
     property real transitionProgress: 0
     readonly property bool showProgress: progress >= 0
     readonly property bool showText: progress < 0 && customText !== ""
+    readonly property bool isVolumeOsd: iconText === "VOL"
     property bool showCondition: false
     property real hiddenLeftPadding: 16
     property real hiddenRightPadding: 16
@@ -32,6 +34,15 @@ Item {
         : (slideDirection === "left"
             ? -(width + hiddenLeftPadding) * clampedProgress
             : 0)
+
+    function asciiBar(value, slots) {
+        const count = slots || 8;
+        const filled = Math.max(0, Math.min(count, Math.round(value * count)));
+        let result = "";
+        for (let index = 0; index < count; index++)
+            result += index < filled ? "█" : "░";
+        return result;
+    }
 
     anchors.fill: parent
     clip: true
@@ -72,6 +83,7 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             width: root.osdIconReserve + root.osdIconPercentGap + osdMaxPercentMetrics.advanceWidth
             height: parent.height
+            visible: !root.isVolumeOsd
 
             Text {
                 id: osdProgressIcon
@@ -109,9 +121,10 @@ Item {
             anchors.rightMargin: 18
             anchors.verticalCenter: parent.verticalCenter
             height: 7
-            radius: height / 2
+            radius: 0
             antialiasing: true
             color: Qt.rgba(89 / 255, 96 / 255, 104 / 255, 0.22)
+            visible: !root.isVolumeOsd
 
             Rectangle {
                 id: osdProgressFill
@@ -120,7 +133,7 @@ Item {
                 anchors.top: parent.top
                 anchors.bottom: parent.bottom
                 width: parent.width * Math.max(0, Math.min(1, progress))
-                radius: height / 2
+                radius: 0
                 antialiasing: true
                 color: StyleTokens.textPrimary
 
@@ -130,6 +143,27 @@ Item {
                         easing.type: Easing.OutCubic
                     }
                 }
+            }
+        }
+
+        Row {
+            anchors.centerIn: parent
+            spacing: 6
+            visible: root.isVolumeOsd
+
+            Text {
+                text: "VOL " + Math.round(progress * 100) + "%"
+                color: StyleTokens.textPrimary
+                font.pixelSize: 17
+                font.family: heroFontFamily
+                font.weight: Font.Medium
+            }
+
+            RoundedAsciiBar {
+                text: root.asciiBar(progress, 20)
+                textColor: StyleTokens.textPrimary
+                pixelSize: 16
+                fontFamily: textFontFamily
             }
         }
     }

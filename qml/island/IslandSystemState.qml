@@ -301,7 +301,7 @@ Item {
                 root._lastVolType = root._pendingVolType;
                 root._lastVolVal = root._pendingVolVal;
                 root.transientRequested(
-                    root._pendingVolType === "MUTE" ? root.statusIcon("mute") : root.statusIcon("volume"),
+                    "VOL",
                     root._pendingVolVal,
                     ""
                 );

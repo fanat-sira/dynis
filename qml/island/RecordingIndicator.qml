@@ -32,7 +32,7 @@ Item {
         width: root.dotSize
         height: root.dotSize
         anchors.centerIn: parent
-        radius: width / 2
+        radius: 0
         color: root.dotColor
         opacity: 1.0
     }

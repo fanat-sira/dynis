@@ -13,6 +13,7 @@ Based on [enhaoswen/Tide-island](https://github.com/enhaoswen/Tide-island).
 - Media controls, MPRIS metadata, optional synced lyrics, and CAVA visualizer
 - Control center for volume, brightness, Wi-Fi, Bluetooth, battery, and power profiles
 - Hyprland workspace indicator and overview
+- Keyboard-driven application launcher and clipboard picker
 - Fullscreen-aware visibility and rounded top screen corners
 - Per-user JSON configuration in `~/.config/dynis/userconfig.json`
 
@@ -93,6 +94,8 @@ bind = $mainMod, down, exec, qs ipc -p /usr/share/dynis call dynis showClock
 bind = $mainMod, left, exec, qs ipc -p /usr/share/dynis call dynis showCustom
 bind = $mainMod, right, exec, qs ipc -p /usr/share/dynis call dynis showLyrics
 bind = $mainMod, TAB, exec, qs ipc -p /usr/share/dynis call overview toggle
+bind = ALT, SPACE, exec, qs ipc -p /usr/share/dynis call dynis launcher
+bind = $mainMod, V, exec, qs ipc -p /usr/share/dynis call dynis clipboard
 ```
 
 For a local checkout, replace `/usr/share/dynis` with the absolute path to that checkout. The island and rounded-corner windows use the `dynis-capsule` and `dynis-corners` layer-shell namespaces; this rule is recommended:
@@ -100,6 +103,25 @@ For a local checkout, replace `/usr/share/dynis` with the absolute path to that 
 ```conf
 layerrule = noanim, dynis-capsule
 ```
+
+For compositor-level liquid glass, use a maintained Hyprland plugin with
+layer-shell alpha-mask support, configured only for `dynis-capsule` and
+`dynis-launcher`. Do not add `layerrule = blur` for those namespaces when the
+glass plugin manages their backdrop.
+
+## Launcher and clipboard
+
+The application launcher is opened with `Alt+Space`; the clipboard picker is opened with `Super+V` in the example binds above. Both support typing to filter, `Up`/`Down` to change the selection, `Enter` to activate it, and `Esc` to close.
+
+Application results learn from successful launches made through Dynis. The launcher stores a small rolling seven-day history in:
+
+```text
+~/.config/dynis/launcher-usage.json
+```
+
+With an empty query, recently and frequently used applications are shown first using a time-decayed score. While searching, match quality takes priority and usage only breaks ties. Mouse-wheel scrolling moves three rows per notch and synchronizes the keyboard selection with the centre of the visible list.
+
+The clipboard picker requires `cliphist` and `wl-copy` (`wl-clipboard`).
 
 ## Configuration
 

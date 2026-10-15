@@ -73,6 +73,10 @@ CLAUDE.md
 userconfig.json
 dynis.local.json
 
+# Runtime helpers copied from the installed Dynis package; source builds
+# generate these under the build/install prefix instead.
+bin/
+
 # IDEs/editors
 .vscode/
 .idea/

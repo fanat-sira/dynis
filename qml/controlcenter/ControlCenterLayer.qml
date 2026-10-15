@@ -1096,7 +1096,7 @@ Item {
                     Rectangle {
                         anchors.fill: parent
                         anchors.rightMargin: 2
-                        radius: 4
+                        radius: 0
                         color: StyleTokens.transparent
                         border.color: StyleTokens.textSecondary
                         border.width: 1
@@ -1106,7 +1106,7 @@ Item {
                             anchors.top: parent.top
                             anchors.bottom: parent.bottom
                             anchors.margins: 2
-                            radius: 2
+                            radius: 0
                             width: (parent.width - 4) * (batteryCapacity / 100.0)
                             color: {
                                 if (batteryCapacity <= 10) return StyleTokens.danger;
@@ -1126,7 +1126,7 @@ Item {
                     Rectangle {
                         width: 2
                         height: 6
-                        radius: 1
+                        radius: 0
                         color: StyleTokens.textSecondary
                         anchors.right: parent.right
                         anchors.verticalCenter: parent.verticalCenter
@@ -1148,7 +1148,7 @@ Item {
                     id: wifiCard
                     width: (connectivityCardsRow.width - connectivityCardsRow.spacing) / 2
                     height: connectivityCardsRow.height
-                    radius: 20
+                    radius: 0
                     color: (wifiCardMouse.containsMouse || wifiPanelOpen) ? StyleTokens.connectivityCardHover : StyleTokens.connectivityCard
 
                     Behavior on color {
@@ -1182,7 +1182,7 @@ Item {
                         anchors.topMargin: 12
                         width: 34
                         height: 20
-                        radius: 10
+                        radius: 0
                         color: wifiEnabled ? StyleTokens.success : StyleTokens.switchOff
 
                         Behavior on color {
@@ -1194,7 +1194,7 @@ Item {
                         Rectangle {
                             width: 16
                             height: 16
-                            radius: 8
+                            radius: 0
                             y: 2
                             x: wifiEnabled ? 16 : 2
                             color: StyleTokens.white
@@ -1273,7 +1273,7 @@ Item {
                     id: bluetoothCard
                     width: (connectivityCardsRow.width - connectivityCardsRow.spacing) / 2
                     height: connectivityCardsRow.height
-                    radius: 20
+                    radius: 0
                     color: (bluetoothCardMouse.containsMouse || bluetoothPanelOpen) ? StyleTokens.connectivityCardHover : StyleTokens.connectivityCard
 
                     Behavior on color {
@@ -1307,7 +1307,7 @@ Item {
                         anchors.topMargin: 12
                         width: 34
                         height: 20
-                        radius: 10
+                        radius: 0
                         color: bluetoothEnabled ? StyleTokens.success : StyleTokens.switchOff
 
                         Behavior on color {
@@ -1319,7 +1319,7 @@ Item {
                         Rectangle {
                             width: 16
                             height: 16
-                            radius: 8
+                            radius: 0
                             y: 2
                             x: bluetoothEnabled ? 16 : 2
                             color: StyleTokens.white
@@ -1414,7 +1414,7 @@ Item {
                 y: -height + controlCenter.batteryDrawerProgress * height
                 width: batteryDrawer.cardWidth
                 height: controlCenter.batteryModeCardHeight
-                radius: 20
+                radius: 0
                 color: StyleTokens.connectivityCard
                 opacity: Math.min(1, controlCenter.batteryDrawerProgress * 1.35)
                 clip: true
@@ -1499,7 +1499,7 @@ Item {
                                     anchors.centerIn: parent
                                     width: index === controlCenter.batteryModeIndex ? 32 : 28
                                     height: index === controlCenter.batteryModeIndex ? 28 : 24
-                                    radius: 12
+                                    radius: 0
                                     color: index === controlCenter.batteryModeIndex ? StyleTokens.textPrimary : "#292a2f"
 
                                     Behavior on width {
@@ -1539,7 +1539,7 @@ Item {
                         anchors.bottom: parent.bottom
                         width: 22
                         height: 2
-                        radius: 1
+                        radius: 0
                         color: "#5d6068"
                         opacity: 0.75
                     }
@@ -1636,7 +1636,7 @@ Item {
                     y: 8
                     width: 48
                     height: 5
-                    radius: 3
+                    radius: 0
                     color: controlCenter.batteryDrawerOpen ? "#d4d6dc" : StyleTokens.textSubtle
                     opacity: 0.88
                 }

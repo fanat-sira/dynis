@@ -19,21 +19,22 @@ Item {
     property var activePlayer: null
     property string iconFontFamily: userConfig.iconFontFamily
     property string textFontFamily: userConfig.textFontFamily
-    property real visualizerPhase: 0
 
     readonly property bool isPlaying: activePlayer && activePlayer.playbackState === MprisPlaybackState.Playing
 
-    function visualizerLevel(index) {
-        const phase = visualizerPhase + index * 0.78;
-        const primary = (Math.sin(phase) + 1) * 0.5;
-        const secondary = (Math.sin(phase * 2 + index * 0.95) + 1) * 0.5;
-        return 0.22 + primary * 0.42 + secondary * 0.24;
+    function asciiBar(value, slots) {
+        const count = slots || 20;
+        const filled = Math.max(0, Math.min(count, Math.round(value * count)));
+        let result = "";
+        for (let index = 0; index < count; index++)
+            result += index < filled ? "█" : "░";
+        return result;
     }
 
-    function pausedVisualizerLevel(index) {
-        const levels = [0.34, 0.58, 0.82, 0.58, 0.34];
-        return levels[index] || 0.4;
-    }
+    // Legacy hidden visualizer delegates still reference these bindings while
+    // QML constructs the tree. Keeping them static prevents any animation.
+    function visualizerLevel(index) { return 0; }
+    function pausedVisualizerLevel(index) { return 0; }
 
     function togglePlayback() {
         if (!activePlayer || !activePlayer.canControl) return;
@@ -62,16 +63,6 @@ Item {
         }
     }
 
-    Timer {
-        interval: 64
-        repeat: true
-        running: showCondition && isPlaying
-        onTriggered: {
-            visualizerPhase += 0.18;
-            if (visualizerPhase > Math.PI * 2) visualizerPhase -= Math.PI * 2;
-        }
-    }
-
     Column {
         anchors.fill: parent
         spacing: 14
@@ -88,7 +79,7 @@ Item {
                 Rectangle {
                     width: 60
                     height: 60
-                    radius: 14
+                    radius: 0
                     color: "#2c2c2e"
                     clip: true
 
@@ -133,6 +124,7 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 width: 44
                 height: 22
+                visible: false
 
                 Row {
                     anchors.centerIn: parent
@@ -147,7 +139,7 @@ Item {
                             height: isPlaying
                                 ? 6 + (parent.height - 6) * visualizerLevel(index)
                                 : 6 + (parent.height - 6) * pausedVisualizerLevel(index)
-                            radius: 2
+                            radius: 0
                             color: isPlaying ? "#b56cff" : "#5f4b72"
                             anchors.verticalCenter: parent.verticalCenter
 
@@ -190,12 +182,13 @@ Item {
                 anchors.right: timeR.left
                 anchors.margins: 12
                 height: 6
-                radius: 3
+                radius: 0
                 color: "#333333"
+                visible: false
 
                 Rectangle {
                     height: parent.height
-                    radius: 3
+                    radius: 0
                     color: "white"
                     width: parent.width * trackProgress
 
@@ -217,11 +210,21 @@ Item {
                 font.family: textFontFamily
                 font.weight: Font.Medium
             }
+
+            Text {
+                anchors.centerIn: parent
+                text: asciiBar(trackProgress, 20)
+                color: "white"
+                font.pixelSize: 14
+                font.family: textFontFamily
+                font.weight: Font.Medium
+            }
         }
 
         Item {
             width: parent.width
-            height: 36
+            height: 0
+            visible: false
 
             Row {
                 anchors.centerIn: parent
@@ -290,8 +293,8 @@ Item {
                         spacing: 6
                         visible: activePlayer && activePlayer.playbackState === MprisPlaybackState.Playing
 
-                        Rectangle { width: 6; height: 20; radius: 2; color: playArea.pressed ? "#888" : "white" }
-                        Rectangle { width: 6; height: 20; radius: 2; color: playArea.pressed ? "#888" : "white" }
+                        Rectangle { width: 6; height: 20; radius: 0; color: playArea.pressed ? "#888" : "white" }
+                        Rectangle { width: 6; height: 20; radius: 0; color: playArea.pressed ? "#888" : "white" }
                     }
 
                     Canvas {
@@ -375,6 +378,64 @@ Item {
                             controlPressed();
                             mouse.accepted = true;
                         }
+                        onClicked: if (activePlayer) activePlayer.next()
+                    }
+                }
+            }
+        }
+
+        Item {
+            width: parent.width
+            height: 36
+
+            Row {
+                anchors.centerIn: parent
+                spacing: 32
+
+                Text {
+                    text: "PREV"
+                    color: prevTextArea.pressed ? "#888888" : "white"
+                    font.pixelSize: 13
+                    font.family: textFontFamily
+                    font.weight: Font.Medium
+
+                    MouseArea {
+                        id: prevTextArea
+                        anchors.fill: parent
+                        anchors.margins: -8
+                        onPressed: (mouse) => { controlPressed(); mouse.accepted = true; }
+                        onClicked: if (activePlayer) activePlayer.previous()
+                    }
+                }
+
+                Text {
+                    text: isPlaying ? "PAUSE" : "PLAY"
+                    color: playTextArea.pressed ? "#888888" : "white"
+                    font.pixelSize: 13
+                    font.family: textFontFamily
+                    font.weight: Font.Bold
+
+                    MouseArea {
+                        id: playTextArea
+                        anchors.fill: parent
+                        anchors.margins: -8
+                        onPressed: (mouse) => { controlPressed(); mouse.accepted = true; }
+                        onClicked: togglePlayback()
+                    }
+                }
+
+                Text {
+                    text: "NEXT"
+                    color: nextTextArea.pressed ? "#888888" : "white"
+                    font.pixelSize: 13
+                    font.family: textFontFamily
+                    font.weight: Font.Medium
+
+                    MouseArea {
+                        id: nextTextArea
+                        anchors.fill: parent
+                        anchors.margins: -8
+                        onPressed: (mouse) => { controlPressed(); mouse.accepted = true; }
                         onClicked: if (activePlayer) activePlayer.next()
                     }
                 }

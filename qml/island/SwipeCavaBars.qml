@@ -43,7 +43,7 @@ Item {
 
                 width: root.barWidth
                 height: root.minimumBarHeight + (parent.height - root.minimumBarHeight) * clampedLevel
-                radius: width / 2
+                radius: 0
                 color: root.barColor
                 anchors.verticalCenter: parent.verticalCenter
 

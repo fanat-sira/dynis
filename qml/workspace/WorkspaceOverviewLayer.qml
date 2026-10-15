@@ -23,7 +23,7 @@ Item {
     property string textFontFamily: userConfig.textFontFamily
     property string heroFontFamily: userConfig.heroFontFamily
     property string wallpaperPath: userConfig.wallpaperPath
-    property real windowCornerRadius: 15
+    property real windowCornerRadius: 0
     property real scale: 0.18
     property int rows: 2
     property int columns: 5
@@ -46,8 +46,8 @@ Item {
     readonly property int workspaceGroup: Math.floor((effectiveActiveWorkspaceId - 1) / workspacesShown)
     readonly property real workspaceSpacing: 6
     readonly property real outerPadding: 14
-    readonly property real largeWorkspaceRadius: 30
-    readonly property real smallWorkspaceRadius: 16
+    readonly property real largeWorkspaceRadius: 0
+    readonly property real smallWorkspaceRadius: 0
     readonly property color activeBorderColor: StyleTokens.workspaceActiveBorder
     readonly property color cardColor: StyleTokens.overviewCard
     readonly property color cardBorderColor: StyleTokens.overviewBorder
@@ -258,13 +258,13 @@ Item {
         width: implicitWidth; height: implicitHeight
         implicitWidth: workspaceStage.implicitWidth + root.outerPadding*2
         implicitHeight: workspaceStage.implicitHeight + root.outerPadding*2
-        radius: root.largeWorkspaceRadius + root.outerPadding
+        radius: 0
         color: root.cardColor
         border.width: 1; border.color: root.cardBorderColor
 
         Rectangle {
             anchors.fill: parent; anchors.margins: 1
-            radius: parent.radius-1; color: StyleTokens.transparent
+            radius: 0; color: StyleTokens.transparent
             border.width: 1; border.color: StyleTokens.overviewInnerBorder
         }
 

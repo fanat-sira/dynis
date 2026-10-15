@@ -83,7 +83,7 @@ Item {
                 Rectangle {
                     anchors.fill: parent
                     anchors.rightMargin: 2
-                    radius: 4
+                    radius: 0
                     color: "transparent"
                     border.color: "#8e8e93"
                     border.width: 1
@@ -93,7 +93,7 @@ Item {
                         anchors.top: parent.top
                         anchors.bottom: parent.bottom
                         anchors.margins: 2
-                        radius: 2
+                        radius: 0
                         width: root.batteryAvailable ? (parent.width - 4) * (root.batteryPercent / 100.0) : 0
                         color: root.batteryColor
 
@@ -113,7 +113,7 @@ Item {
                 Rectangle {
                     width: 2
                     height: 6
-                    radius: 1
+                    radius: 0
                     color: "#8e8e93"
                     anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter
@@ -210,7 +210,7 @@ Item {
                 anchors.bottom: parent.bottom
                 anchors.bottomMargin: 15
                 height: 8
-                radius: 4
+                radius: 0
                 color: "#2c2c2e"
 
                 Rectangle {

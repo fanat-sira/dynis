@@ -9,7 +9,7 @@ Item {
     property string textFontFamily: ""
     property string heroFontFamily: ""
     property string wallpaperPath: ""
-    property real windowCornerRadius: 22
+    property real windowCornerRadius: 0
 
     property alias overviewView: overviewView
     property alias overviewDataReady: hyprlandData.ready

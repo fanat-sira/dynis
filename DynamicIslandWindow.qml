@@ -104,7 +104,8 @@ PanelWindow {
         }
 
     }
-    readonly property real reservedBarTopInset: 10
+    // 20px screen gap + 32px island + 20px gap before tiled windows.
+    readonly property real reservedBarTopInset: 0
     readonly property real reservedBarHeight: Math.ceil(root.reservedBarTopInset + root.sideBarHeight)
     readonly property real edgeBlendOverflowHeight: (!root.overviewVisible && root.sideBarY <= 0.5)
         ? (root.sideBarRadius + 1)
@@ -133,7 +134,9 @@ PanelWindow {
             root.anyConnectivityDetailMounted ? root.connectivityWindowHeight : 0,
             islandContainer.controlCenterLayerVisible ? Math.ceil(root.controlCenterWindowHeight) : 0
         )
-    exclusiveZone: root.fullscreenShellHidden ? 0 : root.reservedBarHeight
+    // The monitor owns the fixed 67px top work area. Keep this surface at the
+    // physical screen edge, so all islands stay aligned at y = 20.
+    exclusionMode: ExclusionMode.Ignore
     aboveWindows: true
     focusable: root.monitorFocused && (root.overviewVisible || root.connectivityPromptActive)
     WlrLayershell.layer: WlrLayer.Overlay
@@ -141,13 +144,26 @@ PanelWindow {
     WlrLayershell.keyboardFocus: root.monitorFocused && (root.overviewVisible || root.connectivityPromptActive)
         ? WlrKeyboardFocus.OnDemand
         : WlrKeyboardFocus.None
+
+    // The actual Dynis panel is deliberately wider than the visible capsule.
+    // Put the glass in its own tightly-sized Top-layer surface so HyprGlass's
+    // edge SDF, refraction, and chromatic split follow the capsule itself.
+    IslandGlassCarrier {
+        hostScreen: root.screen
+        islandWidth: mainCapsule.displayedWidth
+        islandHeight: mainCapsule.targetHeight
+        islandX: mainCapsule.x
+        islandY: root.sideBarY
+        islandRadius: mainCapsule.visualRadius
+        islandVisible: root.visible && !root.overviewContentVisible
+    }
     readonly property string iconFontFamily: userConfig.iconFontFamily
     readonly property string textFontFamily: userConfig.textFontFamily
     readonly property string heroFontFamily: userConfig.heroFontFamily
     readonly property string timeFontFamily: userConfig.timeFontFamily
     readonly property string defaultSplitIcon: "\ud83c\udfa7"
     readonly property string notificationStatusIcon: "\uf0f3"
-    readonly property real overviewWindowCornerRadius: 12
+    readonly property real overviewWindowCornerRadius: 0
     readonly property int dynamicIslandAcceptedButtons: userConfig.mouseButtonsMask([
         1,
         userConfig.dynamicIslandPrimaryButton,
@@ -157,9 +173,7 @@ PanelWindow {
     readonly property real topGestureInputHeight: topGestureInputActive ? root.exclusiveZone : 0
     readonly property real overviewCapsuleWidth: islandContainer.overviewView ? islandContainer.overviewView.width : 760
     readonly property real overviewCapsuleHeight: islandContainer.overviewView ? islandContainer.overviewView.height : 308
-    readonly property real overviewCapsuleRadius: islandContainer.overviewView
-        ? islandContainer.overviewView.largeWorkspaceRadius + islandContainer.overviewView.outerPadding
-        : 44
+    readonly property real overviewCapsuleRadius: 0
     readonly property color overviewCapsuleColor: islandContainer.overviewView
         ? islandContainer.overviewView.cardColor
         : StyleTokens.overviewCard
@@ -182,13 +196,17 @@ PanelWindow {
     readonly property real connectivityDetailGap: 16
     readonly property int connectivityDetailAnimationDuration: 360
     readonly property string overviewWallpaperSource: overviewWallpaperCache.effectiveSource
-    readonly property real sideBarInset: 0
-    readonly property real sideBarY: 13
+    // Align top islands with Hyprland's visible 20px outer gap.
+    readonly property real sideBarInset: 20
+    // Center the 32 px island inside Hyprland's 80 px top outer gap.
+    readonly property real sideBarY: 24
     readonly property real sideBarHeight: 32
-    readonly property real sideBarRadius: 16
+    readonly property real sideBarRadius: sideBarHeight / 2
     readonly property int primaryWorkspaceCount: 10
-    readonly property color barBackgroundColor: Qt.rgba(10 / 255, 11 / 255, 13 / 255, 1.0)
-    readonly property color barBorderColor: Qt.rgba(90 / 255, 96 / 255, 104 / 255, 1.0)
+    // Match LiquidIslandQS: a light dark tint lets the compositor-blurred
+    // wallpaper remain visible instead of reading as a solid black bar.
+    readonly property color barBackgroundColor: Qt.rgba(0.13, 0.19, 0.23, 0.20)
+    readonly property color barBorderColor: Qt.rgba(0.88, 0.94, 1.0, 0.32)
     readonly property color barChipHoverColor: Qt.rgba(28 / 255, 31 / 255, 35 / 255, 0.98)
     readonly property color barTextMutedColor: Qt.rgba(178 / 255, 184 / 255, 192 / 255, 1.0)
     readonly property color barUrgentColor: Qt.rgba(108 / 255, 92 / 255, 98 / 255, 1.0)
@@ -387,7 +405,19 @@ PanelWindow {
     function formatUsagePercent(value) {
         if (!(value >= 0))
             return "--%";
-        return Math.round(Math.max(0, value) * 100) + "%";
+        const percent = Math.round(Math.max(0, value) * 100);
+        return (percent < 10 ? "0" : "") + percent + "%";
+    }
+
+    function formatUsageBar(value, slots) {
+        if (!(value >= 0))
+            return "????????";
+        const count = slots || 8;
+        const filled = Math.max(0, Math.min(count, Math.round(value * count)));
+        let result = "";
+        for (let index = 0; index < count; index++)
+            result += index < filled ? "█" : "░";
+        return result;
     }
 
     function drawStatSparkline(ctx, samples, strokeColor) {
@@ -848,7 +878,11 @@ PanelWindow {
         readonly property bool splitShowsText: islandState === "split" && osdProgress < 0 && osdCustomText !== ""
         readonly property bool splitShowsIconOnly: islandState === "split" && osdProgress < 0 && osdCustomText === ""
         readonly property bool splitUsesExtendedLayout: splitShowsProgress || splitShowsText
-        readonly property real splitCapsuleWidth: splitShowsProgress ? 228 : (splitShowsText ? 200 : 118)
+        // The volume OSD carries a 20-step (5% each) textual bar and needs a
+        // wider capsule than the legacy icon + slider layout.
+        readonly property real splitCapsuleWidth: splitShowsProgress
+            ? (splitIcon === "VOL" ? 360 : 228)
+            : (splitShowsText ? 200 : 118)
         readonly property bool canShowSideSwipe: false
         readonly property real rightSwipeProgress: Math.max(0, swipeTransitionProgress)
         readonly property var customLeftItems: systemState.customLeftItems
@@ -936,8 +970,10 @@ PanelWindow {
             text: islandContainer.currentWorkspaceLabel
         }
 
+        // Workspace labels are allowed to be narrower than the idle clock
+        // capsule: a short app/workspace name should shrink to its content.
         readonly property real workspaceCapsuleWidth: Math.max(
-            188,
+            64,
             Math.min(440, Math.ceil(workspaceLabelMetrics.advanceWidth + 36))
         )
 
@@ -1794,6 +1830,11 @@ PanelWindow {
                     return notificationLoader.item
                         ? notificationLoader.item.preferredHeight
                         : 56;
+                case "normal":
+                    // The expanded grid is 50px tall; 3px padding on both
+                    // sides preserves the clock's idle position and keeps the
+                    // two rows vertically balanced.
+                    return centralBarLayer && centralBarLayer.detailsMode ? 56 : root.sideBarHeight;
                 default:
                     return root.sideBarHeight;
                 }
@@ -1827,24 +1868,60 @@ PanelWindow {
             readonly property real sideSwipePreviewWidth: mainCapsule.sideSwipeWidthForProgress(
                 islandContainer.swipeTransitionProgress
             )
-            color: root.overviewContentVisible
-                ? root.overviewCapsuleColor
-                : (usesWaybarVisualStyle ? root.capsuleLightBackgroundColor : StyleTokens.black)
+            color: root.overviewContentVisible ? root.overviewCapsuleColor : StyleTokens.transparent
             y: root.sideBarY
             anchors.horizontalCenter: parent.horizontalCenter
             clip: true
             width: displayedWidth
             height: targetHeight
-            radius: 0
+            radius: visualRadius
             topLeftRadius: visualRadius
             topRightRadius: visualRadius
             bottomLeftRadius: visualRadius
             bottomRightRadius: visualRadius
 
+            LiquidGlassSurface {
+                anchors.fill: parent
+                // The optical carrier is a separate small layer surface below
+                // this Overlay UI; keeping it out of this wide parent prevents
+                // a second blur pass with no local refractive edge.
+                visible: false
+                cornerRadius: mainCapsule.visualRadius
+                tint: Qt.rgba(0, 0, 0, 0.004)
+                edgeColor: "transparent"
+                edgeWidth: 0
+            }
+
             HoverHandler {
                 id: capsuleHoverHandler
 
-                enabled: !root.overviewVisible && islandContainer.islandState === "normal"
+                enabled: !root.overviewVisible
+                    && (islandContainer.islandState === "normal"
+                        || islandContainer.islandState === "long_capsule")
+            }
+
+            // Scroll anywhere over the hovered capsule to cycle workspaces.
+            // Keep the same e±1 semantics as the Hyprland mouse bindings and
+            // scope it to the monitor owning this island.
+            WheelHandler {
+                id: capsuleWorkspaceWheel
+                enabled: capsuleHoverHandler.hovered
+                    && !root.overviewVisible
+                    && (islandContainer.islandState === "normal"
+                        || islandContainer.islandState === "long_capsule")
+                acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+                onWheel: (wheel) => {
+                    if (wheel.angleDelta.y === 0 && wheel.pixelDelta.y === 0)
+                        return;
+
+                    const forward = wheel.angleDelta.y !== 0
+                        ? wheel.angleDelta.y > 0
+                        : wheel.pixelDelta.y > 0;
+                    Hyprland.dispatch("hl.dsp.focus({ workspace = \""
+                        + (forward ? "e+1" : "e-1")
+                        + "\", on_current_monitor = true })");
+                    wheel.accepted = true;
+                }
             }
 
             onBaseTargetWidthChanged: {
@@ -2016,7 +2093,10 @@ PanelWindow {
 
                     if (mouse.button === userConfig.mouseButton(userConfig.dynamicIslandPrimaryButton)) {
                         preparedOverviewOnPress = false;
-                        islandContainer.handleConfiguredClickAction(userConfig.dynamicIslandPrimaryAction);
+                        // Player opening is deliberately owned by the clock hitbox
+                        // below, not by the entire expanding capsule.
+                        if (userConfig.dynamicIslandPrimaryAction !== "toggleExpandedPlayer")
+                            islandContainer.handleConfiguredClickAction(userConfig.dynamicIslandPrimaryAction);
                         return;
                     }
 
@@ -2108,16 +2188,18 @@ PanelWindow {
                 visible: shouldShow || opacity > 0.001
                 opacity: shouldShow ? 1 : 0
 
-                readonly property bool workspaceMode: root.mainModPreviewActive
-                readonly property bool statusMode: capsuleHoverHandler.hovered && !workspaceMode
+                readonly property bool detailsMode: root.mainModPreviewActive || capsuleHoverHandler.hovered
+                readonly property bool workspaceMode: detailsMode
+                readonly property bool statusMode: detailsMode
                 readonly property real horizontalPadding: 14
-                readonly property real trailingGap: (workspaceMode || statusMode) ? 12 : 0
-                readonly property real trailingWidth: workspaceMode
-                    ? centralWorkspaceStrip.implicitWidth
-                    : (statusMode ? centralStatusStrip.implicitWidth : 0)
-                readonly property real trailingExtent: trailingWidth > 0 ? trailingWidth + trailingGap : 0
-                readonly property real contentWidth: centralDateTimeText.implicitWidth
-                    + trailingExtent
+                readonly property real sideGap: 22
+                readonly property real sideWidth: detailsMode ? Math.max(
+                    integratedWorkspaceStrip.implicitWidth,
+                    centralStatusStrip.implicitWidth
+                ) : 0
+                readonly property real trailingWidth: sideWidth
+                readonly property real contentWidth: sideWidth * 2
+                    + centralDateTimeText.implicitWidth + sideGap * 2
                 readonly property real preferredWidth: Math.max(
                     root.normalCapsuleWidth,
                     Math.ceil(contentWidth + horizontalPadding * 2)
@@ -2135,23 +2217,30 @@ PanelWindow {
                 Item {
                     id: centralContentLayer
 
-                    width: centralBarLayer.contentWidth
-                    height: parent.height
-                    x: (parent.width - width) / 2
-                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.fill: parent
 
-                    Behavior on width {
-                        NumberAnimation {
-                            duration: mainCapsule.morphDuration
-                            easing.type: Easing.OutQuint
-                        }
+                    WorkspaceStrip {
+                        id: integratedWorkspaceStrip
+
+                        x: centralDateTimeText.x - centralBarLayer.sideGap
+                            - centralBarLayer.sideWidth
+                        width: centralBarLayer.sideWidth
+                        y: 3
+                        visible: centralBarLayer.workspaceMode
+                        monitorName: root.hyprMonitorName
+                        activeWorkspaceId: root.currentMonitorWorkspaceId
+                        textFontFamily: root.textFontFamily
+                        itemSize: 24
+                        spacing: 14
                     }
 
                     Text {
                         id: centralDateTimeText
 
-                        x: 0
-                        anchors.verticalCenter: parent.verticalCenter
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        // The expanded island grows down from the top edge; the clock
+                        // deliberately keeps its exact idle Y position.
+                        y: (root.sideBarHeight - height) / 2
                         text: timeObj.currentBarLabel
                         color: StyleTokens.textPrimary
                         font.pixelSize: 17
@@ -2159,12 +2248,54 @@ PanelWindow {
                         font.weight: Font.Medium
                         font.letterSpacing: 0
                         wrapMode: Text.NoWrap
+
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: root.togglePlayerWindow()
+                        }
+                    }
+
+                    Text {
+                        id: centralVolumeBelowClock
+
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        y: 33
+                        text: islandContainer.isMuted
+                            ? "VOL MUTE"
+                            : "VOL " + root.formatUsagePercent(islandContainer.currentVolume)
+                        color: StyleTokens.textPrimary
+                        font.family: root.textFontFamily
+                        font.pixelSize: 13
+                        font.weight: Font.Medium
+                        opacity: centralBarLayer.detailsMode ? 1 : 0
+                        visible: opacity > 0
+
+                        Behavior on opacity {
+                            NumberAnimation {
+                                duration: centralBarLayer.detailsMode ? 180 : 100
+                                easing.type: Easing.InOutQuad
+                            }
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            acceptedButtons: Qt.LeftButton | Qt.RightButton
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: (mouse) => {
+                                if (mouse.button === Qt.RightButton)
+                                    islandContainer.showControlCenter();
+                                else
+                                    SystemServices.launchDetached("wpctl", ["set-mute", "@DEFAULT_AUDIO_SINK@", "toggle"]);
+                            }
+                        }
                     }
 
                     Item {
                         id: centralTrailingSlot
 
-                        x: centralDateTimeText.implicitWidth + centralBarLayer.trailingGap
+                        x: centralDateTimeText.x + centralDateTimeText.implicitWidth
+                            + centralBarLayer.sideGap
                         width: centralBarLayer.trailingWidth
                         height: parent.height
                         clip: true
@@ -2181,8 +2312,11 @@ PanelWindow {
 
                             anchors.verticalCenter: parent.verticalCenter
                             spacing: 0
-                            opacity: centralBarLayer.workspaceMode ? 1 : 0
-                            visible: opacity > 0
+                            // Superseded by integratedWorkspaceStrip on the left of the
+                            // clock. Keeping this legacy strip visible duplicates the
+                            // workspace UI over the status slot on hover.
+                            opacity: 0
+                            visible: false
 
                             Behavior on opacity {
                                 NumberAnimation {
@@ -2236,12 +2370,12 @@ PanelWindow {
                         }
 
                         Row {
-                            id: centralStatusStrip
+                            id: legacyCentralStatusStrip
 
                             anchors.verticalCenter: parent.verticalCenter
                             spacing: 0
-                            opacity: centralBarLayer.statusMode ? 1 : 0
-                            visible: opacity > 0
+                            opacity: 0
+                            visible: false
 
                             Behavior on opacity {
                                 NumberAnimation {
@@ -2404,6 +2538,98 @@ PanelWindow {
                                             SystemServices.launchDetached("wpctl", ["set-mute", "@DEFAULT_AUDIO_SINK@", "toggle"]);
                                     }
                                 }
+                            }
+                        }
+
+                        Column {
+                            id: centralStatusStrip
+
+                            y: 3
+                            spacing: 2
+                            opacity: centralBarLayer.statusMode ? 1 : 0
+                            visible: opacity > 0
+
+                            Behavior on opacity {
+                                NumberAnimation {
+                                    duration: centralBarLayer.statusMode ? 180 : 100
+                                    easing.type: Easing.InOutQuad
+                                }
+                            }
+
+                            Row {
+                                height: 24
+                                spacing: 2
+
+                                Canvas {
+                                    id: compactCpuSpark
+                                    width: 0
+                                    height: 14
+                                    visible: false
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    antialiasing: true
+                                    onPaint: root.drawStatSparkline(getContext("2d"),
+                                        root.shellRootController ? root.shellRootController.cpuSamples : [],
+                                        StyleTokens.textMuted)
+                                }
+
+                                Text {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: "CPU " + root.formatUsagePercent(root.topBarCpuUsage)
+                                    color: StyleTokens.textPrimary
+                                    font.family: root.textFontFamily
+                                    font.pixelSize: 14
+                                    font.weight: Font.Medium
+                                }
+
+                                RoundedAsciiBar {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: root.formatUsageBar(root.topBarCpuUsage, 8)
+                                    textColor: StyleTokens.textMuted
+                                    fontFamily: root.textFontFamily
+                                    pixelSize: 13
+                                }
+
+                            }
+
+                            Row {
+                                height: 24
+                                spacing: 2
+
+                                Canvas {
+                                    id: compactRamSpark
+                                    width: 0
+                                    height: 14
+                                    visible: false
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    antialiasing: true
+                                    onPaint: root.drawStatSparkline(getContext("2d"),
+                                        root.shellRootController ? root.shellRootController.ramSamples : [],
+                                        StyleTokens.textMuted)
+                                }
+
+                                Text {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: "RAM " + root.formatUsagePercent(root.topBarRamUsage)
+                                    color: StyleTokens.textPrimary
+                                    font.family: root.textFontFamily
+                                    font.pixelSize: 14
+                                    font.weight: Font.Medium
+                                }
+
+                                RoundedAsciiBar {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: root.formatUsageBar(root.topBarRamUsage, 8)
+                                    textColor: StyleTokens.textMuted
+                                    fontFamily: root.textFontFamily
+                                    pixelSize: 13
+                                }
+
+                            }
+
+                            Connections {
+                                target: root.shellRootController
+                                function onCpuSamplesChanged() { compactCpuSpark.requestPaint(); }
+                                function onRamSamplesChanged() { compactRamSpark.requestPaint(); }
                             }
                         }
                     }
@@ -3095,11 +3321,7 @@ PanelWindow {
         y: root.sideBarY
         height: root.sideBarHeight
         width: workspaceStripRow.implicitWidth + 18
-        radius: 0
-        topLeftRadius: root.sideBarY <= 0.5 ? 0 : root.sideBarRadius
-        topRightRadius: root.sideBarY <= 0.5 ? 0 : root.sideBarRadius
-        bottomLeftRadius: 0
-        bottomRightRadius: root.sideBarRadius
+        radius: root.sideBarRadius
         color: root.barBackgroundColor
         border.width: 0
         border.color: root.barBorderColor
@@ -3204,11 +3426,7 @@ PanelWindow {
         y: root.sideBarY
         height: root.sideBarHeight
         width: rightBarRow.implicitWidth + 20
-        radius: 0
-        topLeftRadius: root.sideBarY <= 0.5 ? 0 : root.sideBarRadius
-        topRightRadius: root.sideBarY <= 0.5 ? 0 : root.sideBarRadius
-        bottomLeftRadius: root.sideBarRadius
-        bottomRightRadius: 0
+        radius: root.sideBarRadius
         color: root.barBackgroundColor
         border.width: 0
         border.color: root.barBorderColor

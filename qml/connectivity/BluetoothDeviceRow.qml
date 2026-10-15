@@ -30,7 +30,7 @@ Rectangle {
 
     width: parent ? parent.width : 0
     height: 52
-    radius: 14
+    radius: 0
     color: StyleTokens.transparent
     clip: true
 

@@ -26,7 +26,7 @@ Rectangle {
         return Math.max(0, Math.min(1, nextValue));
     }
 
-    radius: 24
+    radius: 0
     color: sliderArea.containsMouse ? moduleHover : moduleColor
 
     Behavior on color {
@@ -55,7 +55,7 @@ Rectangle {
             anchors.right: parent.right
             anchors.bottom: parent.bottom
             height: 22
-            radius: 11
+            radius: 0
             color: root.trackColor
             clip: true
 
@@ -65,7 +65,7 @@ Rectangle {
                 anchors.leftMargin: 10
                 width: 18
                 height: 18
-                radius: 9
+                radius: 0
                 color: StyleTokens.transparent
 
                 Text {
@@ -82,7 +82,7 @@ Rectangle {
                     ? 0
                     : Math.max(34, Math.min(sliderTrack.width, sliderTrack.width * root.value + 1))
                 height: parent.height
-                radius: parent.radius
+                radius: 0
                 color: StyleTokens.textPrimary
             }
 
@@ -91,7 +91,7 @@ Rectangle {
                 y: -1
                 width: root.knobSize
                 height: root.knobSize
-                radius: root.knobSize / 2
+                radius: 0
                 color: StyleTokens.white
             }
 

@@ -87,7 +87,7 @@ Item {
         )
     readonly property real preferredWidth: compactPreferredWidth
     readonly property real preferredHeight: compactPreferredHeight
-    readonly property real outerRadius: compactPreferredHeight / 2
+    readonly property real outerRadius: 0
 
     function resolveIconName(rawIcon, rawAppName) {
         const icon = String(rawIcon === undefined || rawIcon === null ? "" : rawIcon).trim();

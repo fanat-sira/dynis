@@ -40,7 +40,12 @@ void UserConfigBackendTests::loadsTypedValuesFromJson()
         "wallpaperPath": "/tmp/test-wallpaper.jpg",
         "textFontFamily": "Test Text",
         "tlpPermissionMode": "skip",
-        "dynamicIslandLeftSwipeItems": ["time", "ram"]
+        "dynamicIslandLeftSwipeItems": ["time", "ram"],
+        "screenCornerRadius": 18,
+        "screenEdgeShadowEnabled": false,
+        "screenEdgeShadowRadius": 32,
+        "screenEdgeShadowOpacity": 0.5,
+        "screenEdgeShadowColor": "#112233"
     })json");
     QVERIFY(!configPath.isEmpty());
 
@@ -51,6 +56,11 @@ void UserConfigBackendTests::loadsTypedValuesFromJson()
     QCOMPARE(config.textFontFamily(), QStringLiteral("Test Text"));
     QCOMPARE(config.tlpPermissionMode(), QStringLiteral("skip"));
     QCOMPARE(config.dynamicIslandLeftSwipeItems(), QVariantList({QStringLiteral("time"), QStringLiteral("ram")}));
+    QCOMPARE(config.screenCornerRadius(), 18);
+    QCOMPARE(config.screenEdgeShadowEnabled(), false);
+    QCOMPARE(config.screenEdgeShadowRadius(), 32);
+    QCOMPARE(config.screenEdgeShadowOpacity(), 0.5);
+    QCOMPARE(config.screenEdgeShadowColor(), QStringLiteral("#112233"));
 }
 
 void UserConfigBackendTests::exposesParseErrorsAndFallsBackToDefaults()
@@ -65,6 +75,11 @@ void UserConfigBackendTests::exposesParseErrorsAndFallsBackToDefaults()
     QVERIFY(!config.configError().isEmpty());
     QCOMPARE(config.textFontFamily(), QStringLiteral("Xanh Mono"));
     QCOMPARE(config.dynamicIslandLeftSwipeItems(), QVariantList({QStringLiteral("cava"), QStringLiteral("battery")}));
+    QCOMPARE(config.screenCornerRadius(), 15);
+    QCOMPARE(config.screenEdgeShadowEnabled(), true);
+    QCOMPARE(config.screenEdgeShadowRadius(), 24);
+    QCOMPARE(config.screenEdgeShadowOpacity(), 0.35);
+    QCOMPARE(config.screenEdgeShadowColor(), QStringLiteral("#000000"));
 }
 
 void UserConfigBackendTests::mapsConfiguredMouseButtons()
